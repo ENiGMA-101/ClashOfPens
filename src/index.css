@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .font-kalam {
+    font-family: 'Kalam', 'Segoe Print', cursive;
+  }
+  .font-outfit {
+    font-family: 'Outfit', system-ui, sans-serif;
+  }
+  .font-bangla {
+    font-family: 'Hind Siliguri', system-ui, sans-serif;
+  }
+}
+
+/* Notebook paper texture effect */
+.notebook-sheet {
+  background-color: #f7f9fc;
+  background-image: 
+    linear-gradient(90deg, transparent 44px, #d8536b 44px, #d8536b 46px, transparent 46px),
+    repeating-linear-gradient(180deg, transparent 0 31px, #cfdcec 31px 32px);
+  background-position: 0 0, 0 18px;
+  box-shadow: 0 20px 48px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.1);
+  color: #1a202c;
+}
+
+.dark .notebook-sheet {
+  background-color: #171d2b;
+  background-image: 
+    linear-gradient(90deg, transparent 44px, #a8475a 44px, #a8475a 46px, transparent 46px),
+    repeating-linear-gradient(180deg, transparent 0 31px, #2a3550 31px 32px);
+  color: #e2e8f0;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.7);
+}
+

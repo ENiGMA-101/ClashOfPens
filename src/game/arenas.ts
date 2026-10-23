@@ -1,0 +1,115 @@
+import { ArenaDesk } from '../types/game';
+
+export const ARENAS_DATA: ArenaDesk[] = [
+  {
+    id: 'classic',
+    name: 'Classic Classroom',
+    banglaName: 'সাধারণ ক্লাসরুম',
+    desc: 'Traditional high school wooden desk with pencil scratches, chalk marks, and nostalgic tic-tac-toe games.',
+    surface: 'normal',
+    frictionAir: 0.05,
+    theme: {
+      baseHue: 27,
+      baseSat: 48,
+      baseLight: 32,
+      rimColor: 'rgba(25,12,4,0.85)',
+      scratchColor: 'rgba(255,225,185,0.08)',
+      chalkDoodles: true,
+      inkStains: true,
+    },
+  },
+  {
+    id: 'exam_hall',
+    name: 'Examination Hall',
+    banglaName: 'পরীক্ষার হল',
+    desc: 'Polished teak desk under bright tube lights. Low friction allows pens to slide lightning fast!',
+    surface: 'polished',
+    frictionAir: 0.035,
+    theme: {
+      baseHue: 32,
+      baseSat: 54,
+      baseLight: 36,
+      rimColor: 'rgba(35,16,6,0.9)',
+      scratchColor: 'rgba(255,240,210,0.12)',
+      chalkDoodles: false,
+      inkStains: false,
+      specular: 'rgba(255,255,255,0.18)',
+    },
+  },
+  {
+    id: 'art_room',
+    name: 'Art Room Workbench',
+    banglaName: 'চারুকলা ডেক্স',
+    desc: 'Covered with vibrant acrylic paint splatters, charcoal smudges, and colorful ink drops.',
+    surface: 'normal',
+    frictionAir: 0.052,
+    theme: {
+      baseHue: 22,
+      baseSat: 38,
+      baseLight: 28,
+      rimColor: 'rgba(40,15,5,0.88)',
+      scratchColor: 'rgba(255,200,160,0.1)',
+      chalkDoodles: true,
+      inkStains: true,
+    },
+  },
+  {
+    id: 'science_lab',
+    name: 'Science Lab Slate',
+    banglaName: 'বিজ্ঞান ল্যাব টেবিল',
+    desc: 'Heavy acid-resistant black slate table. Higher friction provides strategic control and prevents runaway slides.',
+    surface: 'rough',
+    frictionAir: 0.068,
+    theme: {
+      baseHue: 200,
+      baseSat: 12,
+      baseLight: 22,
+      rimColor: 'rgba(12,18,24,0.95)',
+      scratchColor: 'rgba(200,225,240,0.08)',
+      chalkDoodles: true,
+      inkStains: false,
+    },
+  },
+  {
+    id: 'midnight',
+    name: 'Midnight Study Desk',
+    banglaName: 'রাতের পড়ার টেবিল',
+    desc: 'Dark mahogany desk lit by a solitary warm reading lamp during late-night exam prep.',
+    surface: 'normal',
+    frictionAir: 0.048,
+    theme: {
+      baseHue: 15,
+      baseSat: 42,
+      baseLight: 18,
+      rimColor: 'rgba(10,4,2,0.95)',
+      scratchColor: 'rgba(255,180,120,0.07)',
+      chalkDoodles: false,
+      inkStains: true,
+      specular: 'rgba(255,200,120,0.15)',
+    },
+  },
+  {
+    id: 'golden_championship',
+    name: 'Golden Championship Table',
+    banglaName: 'গ্র্যান্ড চ্যাম্পিয়নশিপ টেবিল',
+    desc: 'High-stakes tournament table with gold-inlaid borders and lacquered ebony finish.',
+    surface: 'polished',
+    frictionAir: 0.038,
+    theme: {
+      baseHue: 40,
+      baseSat: 30,
+      baseLight: 14,
+      rimColor: 'rgba(212,175,55,0.95)',
+      scratchColor: 'rgba(255,215,0,0.15)',
+      chalkDoodles: false,
+      inkStains: false,
+      specular: 'rgba(255,235,160,0.25)',
+    },
+  },
+];
+
+export const ARENAS_BY_ID = Object.fromEntries(ARENAS_DATA.map((a) => [a.id, a]));
+
+export function getArena(id: string): ArenaDesk {
+  return ARENAS_BY_ID[id] || ARENAS_DATA[0];
+}

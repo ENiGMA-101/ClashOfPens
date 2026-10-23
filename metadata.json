@@ -1,0 +1,6 @@
+{
+  "name": "Pen Fight: Desk Brawl (কলম যুদ্ধ)",
+  "description": "The back-bench classic pen-fighting arcade game. Flick your pen, execute tactical spin, push and slam attacks, knock rivals off the wooden desk, and claim the championship trophy.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
