@@ -5,10 +5,12 @@ import { SKINS_DATA, getSkin, DEFAULT_PEN_ID } from '../game/skins';
 import { BOT_ROSTER } from '../game/bots';
 import { Sound } from '../game/audio';
 
+import { MatchFormat } from '../game/seriesState';
+
 interface MatchSetupModalProps {
   mode: 'quick' | 'pass_and_play' | 'ai_battle';
   onClose: () => void;
-  onStart: (players: PlayerConfig[]) => void;
+  onStart: (players: PlayerConfig[], format?: MatchFormat) => void;
   defaultSkinId: string;
 }
 
@@ -19,6 +21,7 @@ export const MatchSetupModal: React.FC<MatchSetupModalProps> = ({
   defaultSkinId,
 }) => {
   const [playerCount, setPlayerCount] = useState<2 | 3>(2);
+  const [format, setFormat] = useState<MatchFormat>('single');
   const [players, setPlayers] = useState<PlayerConfig[]>([
     {
       id: 'p1',
@@ -64,7 +67,7 @@ export const MatchSetupModal: React.FC<MatchSetupModalProps> = ({
 
   const handleStart = () => {
     Sound.playClick();
-    onStart(players.slice(0, playerCount));
+    onStart(players.slice(0, playerCount), format);
   };
 
   return (
@@ -111,36 +114,72 @@ export const MatchSetupModal: React.FC<MatchSetupModalProps> = ({
           </button>
         </div>
 
-        {/* Player Count Segment */}
-        <div className="mb-4 flex items-center justify-between bg-[#2a170d] p-2 rounded-xl border border-[#4d2b17]">
-          <span className="text-xs font-bold text-[#e5e7eb] pl-2">Players at Desk</span>
-          <div className="flex gap-1">
-            <button
-              onClick={() => {
-                Sound.playClick();
-                setPlayerCount(2);
-              }}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
-                playerCount === 2
-                  ? 'bg-[#d4af37] text-black shadow'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              2 Players
-            </button>
-            <button
-              onClick={() => {
-                Sound.playClick();
-                setPlayerCount(3);
-              }}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
-                playerCount === 3
-                  ? 'bg-[#d4af37] text-black shadow'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              3 Players
-            </button>
+        {/* Player Count & Match Format Segments */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+          {/* Player Count */}
+          <div className="flex items-center justify-between bg-[#2a170d] p-2 rounded-xl border border-[#4d2b17]">
+            <span className="text-xs font-bold text-[#e5e7eb] pl-1">Players</span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => {
+                  Sound.playClick();
+                  setPlayerCount(2);
+                }}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
+                  playerCount === 2
+                    ? 'bg-[#d4af37] text-black shadow'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                2 Players
+              </button>
+              <button
+                onClick={() => {
+                  Sound.playClick();
+                  setPlayerCount(3);
+                }}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
+                  playerCount === 3
+                    ? 'bg-[#d4af37] text-black shadow'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                3 Players
+              </button>
+            </div>
+          </div>
+
+          {/* Match Format Toggle */}
+          <div className="flex items-center justify-between bg-[#2a170d] p-2 rounded-xl border border-[#4d2b17]">
+            <span className="text-xs font-bold text-[#e5e7eb] pl-1">Format</span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => {
+                  Sound.playClick();
+                  setFormat('single');
+                }}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+                  format === 'single'
+                    ? 'bg-[#d4af37] text-black shadow'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Single Match
+              </button>
+              <button
+                onClick={() => {
+                  Sound.playClick();
+                  setFormat('bo5');
+                }}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+                  format === 'bo5'
+                    ? 'bg-[#d4af37] text-black shadow'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Best of 5
+              </button>
+            </div>
           </div>
         </div>
 

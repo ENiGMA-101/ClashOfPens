@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.penfight.deskbrawl',
   appName: 'Pen Fight: Desk Brawl',
   webDir: 'dist',
-  bundledWebRuntime: false,
   server: {
     androidScheme: 'https',
     cleartext: false,

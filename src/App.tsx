@@ -54,6 +54,19 @@ import {
   drawRoundedRect,
   generateDeskCanvas,
 } from './game/renderer';
+import {
+  getTableConfig,
+  resolveTableDimensions,
+  getTableSpawnPositions,
+} from './game/tableConfig';
+import {
+  SeriesState,
+  MatchFormat,
+  createNewSeries,
+  commitSeriesMatchResult,
+  getNextMatchInstanceId,
+  loadSavedSeriesState,
+} from './game/seriesState';
 
 import { HeaderNav } from './components/HeaderNav';
 import { MainMenu } from './components/MainMenu';
@@ -61,6 +74,7 @@ import { GameHUD } from './components/GameHUD';
 import { MatchSetupModal } from './components/MatchSetupModal';
 import { PenLockerModal } from './components/PenLockerModal';
 import { ArenaSelectorModal } from './components/ArenaSelectorModal';
+import { TableSelectionModal } from './components/TableSelectionModal';
 import { ChallengesModal } from './components/ChallengesModal';
 import { ChampionshipModal } from './components/ChampionshipModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -130,6 +144,26 @@ export default function App() {
     coins: 0,
     xp: 0,
   });
+
+  // Table Configuration & Dimensions
+  const [selectedTableId, setSelectedTableId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('clashofpens_table_id') || 'large_rectangle';
+    } catch {
+      return 'large_rectangle';
+    }
+  });
+  const [customDims, setCustomDims] = useState<{ width: number; height: number }>(() => {
+    try {
+      const saved = localStorage.getItem('clashofpens_custom_table_dims');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { width: 900, height: 600 };
+  });
+
+  // Best of 5 Series State & Player Configs
+  const [series, setSeries] = useState<SeriesState | null>(loadSavedSeriesState);
+  const [lastPlayerConfigs, setLastPlayerConfigs] = useState<PlayerConfig[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -247,8 +281,10 @@ export default function App() {
     const h = window.innerHeight;
     const isPortrait = w / h < 0.95;
 
-    G.deskWidth = isPortrait ? 640 : 1000;
-    G.deskHeight = isPortrait ? 1000 : 640;
+    const table = getTableConfig(selectedTableId, customDims);
+    const dims = resolveTableDimensions(table, isPortrait);
+    G.deskWidth = dims.width;
+    G.deskHeight = dims.height;
 
     const topPad = isPlaying ? 70 : 0;
     const botPad = isPlaying ? 170 : 0;
@@ -260,7 +296,7 @@ export default function App() {
       ox: (w - G.deskWidth * scale) / 2,
       oy: topPad + (availH - G.deskHeight * scale) / 2,
     };
-  }, [isPlaying]);
+  }, [isPlaying, selectedTableId, customDims]);
 
   useEffect(() => {
     updateLayout();
@@ -348,27 +384,32 @@ export default function App() {
   );
 
   // Execute Flick Action
-  const handleFlick = useCallback(() => {
-    const G = gameRef.current;
-    if (phase !== 'aim' || G.attacker) return;
-    const p = G.players[currentTurn];
-    if (!p || !p.alive) return;
+  const handleFlick = useCallback(
+    (overridePower?: number) => {
+      const G = gameRef.current;
+      if (phase !== 'aim' || G.attacker) return;
+      const p = G.players[currentTurn];
+      if (!p || !p.alive) return;
 
-    p.lastPower = power;
-    p.lastSide = side;
-    p.flickCount++;
+      const finalPower = overridePower !== undefined ? overridePower : power;
+      p.lastPower = finalPower;
+      setPower(finalPower);
+      p.lastSide = side;
+      p.flickCount++;
 
-    if (p.isBot && p.botPersonality) {
-      p.speech = p.botPersonality.quips.flick;
-      p.speechTime = performance.now();
-    }
+      if (p.isBot && p.botPersonality) {
+        p.speech = p.botPersonality.quips.flick;
+        p.speechTime = performance.now();
+      }
 
-    setPhase('launch');
-    G.launchTime = performance.now();
-    Sound.playFlick(power / 100);
+      setPhase('launch');
+      G.launchTime = performance.now();
+      Sound.playFlick(finalPower / 100);
 
-    setBanner(null);
-  }, [currentTurn, phase, power, side]);
+      setBanner(null);
+    },
+    [currentTurn, phase, power, side]
+  );
 
   // Eliminate Pen
   const eliminatePlayer = useCallback(
@@ -450,6 +491,27 @@ export default function App() {
       const baseCoins = winner && !winner.isBot ? 80 : 25;
       const baseXp = winner && !winner.isBot ? 120 : 40;
 
+      // Handle Best-of-5 Series Progression
+      if (series && !series.isComplete) {
+        const instanceId = getNextMatchInstanceId(series);
+        const { updatedSeries } = commitSeriesMatchResult(
+          series,
+          instanceId,
+          winner ? winner.id : null,
+          winner ? winner.name : null
+        );
+        setSeries(updatedSeries);
+
+        if (updatedSeries.isComplete) {
+          confetti({
+            particleCount: 120,
+            spread: 90,
+            origin: { y: 0.5 },
+          });
+          Sound.playWin();
+        }
+      }
+
       // Check challenge mode objective
       if (activeChallenge && winner && !winner.isBot) {
         const passedTurns = turnsUsedInChallenge <= activeChallenge.maxTurns;
@@ -501,7 +563,7 @@ export default function App() {
         setActiveModal('match_over');
       }, 1400);
     },
-    [activeChallenge, activeTournamentMatch, turnsUsedInChallenge]
+    [activeChallenge, activeTournamentMatch, series, turnsUsedInChallenge]
   );
 
   // Complete turn and advance
@@ -538,7 +600,12 @@ export default function App() {
 
   // Start new match
   const startMatch = useCallback(
-    (configs: PlayerConfig[], mode: GameMode = 'quick') => {
+    (
+      configs: PlayerConfig[],
+      mode: GameMode = 'quick',
+      format: MatchFormat = 'single',
+      keepSeries = false
+    ) => {
       const G = gameRef.current;
       G.matchId++;
       setGameMode(mode);
@@ -547,10 +614,26 @@ export default function App() {
       setEliminatedHistory([]);
       setMatchWinner(null);
       setTurnsUsedInChallenge(0);
+      setLastPlayerConfigs(configs);
+
+      // Handle Best-of-5 Series Initialization
+      if (format === 'bo5') {
+        if (!keepSeries || !series || series.isComplete) {
+          const newSeries = createNewSeries(configs[0], configs[1], 'bo5');
+          setSeries(newSeries);
+        }
+      } else if (!keepSeries) {
+        setSeries(null);
+      }
 
       updateLayout();
-      const arena = getArena(settings.desk);
-      G.deskCanvas = generateDeskCanvas(G.deskWidth, G.deskHeight, arena, Math.floor(Math.random() * 1e6));
+      const currentTable = getTableConfig(selectedTableId, customDims);
+      G.deskCanvas = generateDeskCanvas(
+        G.deskWidth,
+        G.deskHeight,
+        currentTable as any,
+        Math.floor(Math.random() * 1e6)
+      );
 
       if (G.engine) {
         Events.off(G.engine, 'collisionStart', () => {});
@@ -618,21 +701,21 @@ export default function App() {
       });
 
       const isPortrait = G.deskWidth < G.deskHeight;
-      const spawns = getSpawnPositions(configs.length, isPortrait, G.deskWidth, G.deskHeight);
+      const spawns = getTableSpawnPositions(G.deskWidth, G.deskHeight, configs.length, isPortrait);
 
       G.players = configs.map((cfg, i) => {
         const skin = getSkin(cfg.skinId);
         const spawn = spawns[i];
         const body = Bodies.rectangle(spawn.x, spawn.y, PEN_LENGTH, PEN_WIDTH, {
           chamfer: { radius: 7 },
-          frictionAir: arena.frictionAir,
+          frictionAir: currentTable.frictionAir,
           friction: 0.12,
           frictionStatic: 0.2,
           restitution: BASE_RESTITUTION,
           density: BASE_DENSITY,
           angle: spawn.a,
         });
-        body.deltaTime = SUB_DT;
+        (body as any).deltaTime = SUB_DT;
         Composite.add(G.engine!.world, body);
 
         const botPersonality = cfg.isBot
@@ -664,7 +747,7 @@ export default function App() {
       G.fx = [];
       beginTurn(0);
     },
-    [beginTurn, settings.desk, settings.reducedMotion, updateLayout]
+    [beginTurn, customDims, selectedTableId, series, settings.reducedMotion, updateLayout]
   );
 
   // Start Challenge match
@@ -1267,6 +1350,7 @@ export default function App() {
           power={power}
           side={side}
           bannerMessage={banner}
+          series={series}
           onSetPower={(p) => {
             setPower(p);
             gameRef.current.ghostDirty = true;
@@ -1275,15 +1359,16 @@ export default function App() {
             setSide(s);
             gameRef.current.ghostDirty = true;
           }}
-          onFlick={handleFlick}
+          onFlick={(launchPower) => handleFlick(launchPower)}
           onRestart={() => {
             const configs = gameRef.current.players.map((p) => ({
               id: p.id,
               name: p.name,
               skinId: p.skin.id,
               isBot: p.isBot,
+              botPersonalityId: p.botPersonality?.id,
             }));
-            startMatch(configs, gameMode);
+            startMatch(configs, gameMode, series ? 'bo5' : 'single', true);
           }}
           onExit={() => setIsPlaying(false)}
           isPractice={gameMode === 'practice'}
@@ -1296,7 +1381,7 @@ export default function App() {
           mode={setupMode}
           defaultSkinId={progress.equippedSkin}
           onClose={() => setActiveModal('none')}
-          onStart={(players) => startMatch(players, setupMode)}
+          onStart={(players, fmt) => startMatch(players, setupMode, fmt || 'single')}
         />
       )}
 
@@ -1322,14 +1407,26 @@ export default function App() {
         />
       )}
 
-      {/* Arena Selector Modal */}
+      {/* Table Arenas Selector Modal */}
       {activeModal === 'arenas' && (
-        <ArenaSelectorModal
-          currentArenaId={settings.desk}
+        <TableSelectionModal
+          currentTableId={selectedTableId}
+          customWidth={customDims.width}
+          customHeight={customDims.height}
           onClose={() => setActiveModal('none')}
-          onSelectArena={(arenaId) => {
-            setSettings((prev) => ({ ...prev, desk: arenaId }));
-            setProgress((prev) => ({ ...prev, equippedArena: arenaId }));
+          onSelectTable={(tableId, newDims) => {
+            setSelectedTableId(tableId);
+            try {
+              localStorage.setItem('clashofpens_table_id', tableId);
+            } catch {}
+            if (newDims) {
+              setCustomDims(newDims);
+              try {
+                localStorage.setItem('clashofpens_custom_table_dims', JSON.stringify(newDims));
+              } catch {}
+            }
+            setSettings((prev) => ({ ...prev, desk: tableId }));
+            updateLayout();
           }}
         />
       )}
@@ -1374,15 +1471,18 @@ export default function App() {
           eliminatedOrder={eliminatedHistory}
           coinsAwarded={awardedRewards.coins}
           xpAwarded={awardedRewards.xp}
+          series={series}
+          onContinueSeries={() => {
+            startMatch(lastPlayerConfigs, gameMode, 'bo5', true);
+          }}
           onRematch={() => {
-            const configs = gameRef.current.players.map((p) => ({
-              id: p.id,
-              name: p.name,
-              skinId: p.skin.id,
-              isBot: p.isBot,
-              botPersonalityId: p.botPersonality?.id,
-            }));
-            startMatch(configs, gameMode);
+            if (series && series.isComplete) {
+              startMatch(lastPlayerConfigs, gameMode, 'bo5', false);
+            } else if (series) {
+              startMatch(lastPlayerConfigs, gameMode, 'bo5', true);
+            } else {
+              startMatch(lastPlayerConfigs, gameMode, 'single', false);
+            }
           }}
           onChangeOpponent={() => {
             setIsPlaying(false);

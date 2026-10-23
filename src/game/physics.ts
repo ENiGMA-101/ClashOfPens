@@ -265,7 +265,7 @@ export function simulateTrajectory(
       angle: attackerPos.angle,
     }
   );
-  ghostBody.deltaTime = SUB_DT;
+  (ghostBody as any).deltaTime = SUB_DT;
   Composite.add(ghostEngine.world, ghostBody);
 
   applyLaunch(ghostBody, angle, powerNormalized, sideIndex);

@@ -1,29 +1,50 @@
 # Pen Fight: Desk Brawl (কলম যুদ্ধ)
 
-> **The classic back-bench pen-fighting mobile game, crafted with HTML5 Canvas, Matter.js 2D physics, and packaged for Android & Google Play Store distribution via Capacitor.**
+> **The definitive Bangladeshi school-life pen-fighting game with authentic stationery, 2D Matter.js physics, customizable tables, 8-ball pool charge flicking, and Best-of-5 series play. Packaged for Android & Google Play Store distribution via Capacitor.**
 
 ---
 
-## 🎮 Overview & Game Features
+## 🎮 Overview & Core Upgrades
 
-- **Realistic Physics & Attack-Side Mechanics**:
-  - **Side 1 — Top Strike (শীর্ষ আঘাত)**: Hits the nib/tip. Rotates in an arc, sweeping around obstacle pens to clip targets.
-  - **Side 2 — Middle Push (সরাসরি ধাক্কা)**: Dead-center linear strike with zero spin. Maximum momentum transfer on direct impact.
+### 1. 🖊️ Authentic Bangladeshi Pen Collection
+- **Matador Pin-Point (Default & Free)**: The undisputed national classroom legend of Bangladesh with slim cylindrical barrel, translucent ink reservoir tube, fine 0.5mm tungsten needle tip, and pinpoint trajectory control. Immediately equipped on first launch without coins or registration.
+- **Matador All-Time (Permanently Free)**: The dependable examination hall companion with hexagonal faceted translucent body, longitudinal grip ridges, and balanced center-of-gravity.
+- **Authentic Matador Stationery Catalog**:
+  - **Matador i-Teen**: Sporty two-tone accents and textured finger ribs with 0.7mm smooth ball.
+  - **Matador i-Teen Rio**: Festive carnival yellow-green energy with high spin momentum.
+  - **Matador Hi-School**: Board exam workhorse with crisp racing band and stable desk slide.
+  - **Matador Glory Crystal**: Diamond-faceted transparent barrel with 0.5mm micro needle point.
+  - **Matador Envoy Premium**: Weighted brass center-of-gravity, matte black barrel, and gold-plated clip.
+  - **Matador Radiant**: Shimmering metallic pastel finish with ultra-smooth glide.
+  - **Matador Woodmark**: Teak wood-grain camouflage pattern with natural roll balance.
+  - **Matador Orbit**: Soft-touch rubberized barrel with dual orbital traction rings.
+  - **Matador Smoothy**: Zero-friction low-viscosity ink with neon shock-absorbing grip.
+- **Original Collectible Skins**: Fictional game editions labeled as original designs (*Neon Pulse*, *Thunder Strike*, *Golden Champion*, *Midnight Blue*, *Cosmic Ink*, *Ember Flame*, *Crystal Frost*, *Legendary Dragon*).
+
+### 2. 🪑 Selectable Table Shapes & Sizes
+- **Large Rectangle Table (Default)**: Spacious classroom desk (1040 × 640 px) with visible wood grain, scratches, and long runways for bank shots.
+- **Square Table**: Genuinely square 1:1 battleground (780 × 780 px) with equal distance to all four edges and symmetrical starting positions.
+- **Small Practice Table**: Compact bench arena (620 × 520 px) with high roll-off danger requiring precision touch.
+- **Championship Table**: Lacquered mahogany tournament arena (1160 × 720 px) with gold-inlaid borders and tournament-grade slickness.
+- **Custom Dimensions Desk**: Player-adjustable width (550–1200 px), height (500–1000 px), and live aspect ratio validation.
+
+### 3. 🎱 8 Ball Pool Shot-Power System
+- **Hold-to-Charge & Release-to-Shoot**: Press-and-hold the vertical cue power meter beside the desk to charge power smoothly from 5% to 100% over ~1.6s. Releasing executes the flick.
+- **Max Power Lock (No Auto-Fire)**: Reaching 100% does *not* prematurely fire the shot. It locks at MAX with visual pulsing until the player releases their finger.
+- **Attack Side Integration**:
+  - **Side 1 — Top Strike (শীর্ষ আঘাত)**: Striking nib end generates dynamic angular spin to curve around obstacles.
+  - **Side 2 — Middle Push (সরাসরি ধাক্কা)**: Dead-center linear strike with 98% momentum transfer on impact.
   - **Side 3 — Bottom Slam (ভারী আঘাত)**: Heavy bulldozing attack striking the pen cap with 1.85x mass density.
-- **Game Modes**:
-  - **Quick Match**: Instant 2-player or 3-player battle.
-  - **AI Battle**: Play against Easy, Normal, or Sharp bot intelligence.
-  - **Pass-and-Play**: Local multiplayer sharing one smartphone with private turn transitions.
-  - **Practice Range**: Unlimited test flicks with predictive trajectory guides.
-  - **Challenge Mode**: 6 trick-shot missions with coin & XP rewards.
-  - **Championship Tournament**: 3-round bracket cup against iconic back-bench champions to win trophies.
-- **Pen Locker & Collectibles**:
-  - **Classics**: Classic Blue, Exam Black, Red Ink, Green Ink, Purple Ink.
-  - **Hero Squad**: Ember Tiger, Monsoon, Thunder Rani, Shapla Guard, Night Kite, Jute Titan.
-  - **Legendary**: Gold Champion, Neon Pulse, Cosmic Pen.
-- **Wooden Desk Arenas**:
-  - Classic Classroom, Examination Hall (low friction), Art Room Workbench, Science Lab Slate (rough high friction), Midnight Study Desk, Golden Championship Table.
-- **100% Offline-First**: Zero required internet connections or telemetry. Audio synthesized client-side via Web Audio API.
+
+### 4. 🏆 Best-of-5 Series (Bo5) System
+- **First to 3 Wins**: Compete in a best-of-5 tournament series with 5 distinct match slots.
+- **Draw Replay Rule**: Drawn matches award no points to either side and trigger an immediate draw-replay in that match slot.
+- **Idempotent Match Tracking**: Every match gets a unique instance ID to ensure scores never double-count during re-renders or page refreshes.
+- **Live Series Scoreboard**: Complete visual indicators showing match slots (M1–M5), current series leader, and pending draw-replays.
+
+### 5. 🤖 12 School-Life Bot Personalities
+- **Backbench Boss** (Heavy Bulldozer), **Class Captain** (Discipline Enforcer), **Exam Ninja** (0.5mm Needle Master), **Desk Destroyer** (100% Power Slogger), **Last-Bencher Legend** (Veteran Pen Fighter), **Ink Master** (Trajectory Scholar), **Pencil Box Pro** (Stationery Connoisseur), **Silent Striker** (First-Bench Tactician), **Turbo Tip** (Rapid Flick Prodigy), **Matador Master** (Golden Champion), **Topper Bhai** (Physics Rank #1), and **The Comeback Kid** (Edge Reversal Specialist).
+- Fully voiced with iconic Bengali and English classroom quips.
 
 ---
 
@@ -33,11 +54,13 @@
 # 1. Install dependencies
 npm install
 
-# 2. Run local development server
+# 2. Run unit test suite (14/14 tests covering physics, table geometry & Bo5 rules)
+npm test
+
+# 3. Start local development server
 npm run dev
 
-# 3. Open in browser:
-# http://localhost:3000
+# Open http://localhost:3000 in your browser
 ```
 
 ---
@@ -47,9 +70,9 @@ npm run dev
 ### Prerequisites
 - Node.js (v18+)
 - Android Studio Ladybug / Meerkat (or newer)
-- Android SDK 36 (Android 16) installed via Android Studio SDK Manager
+- Android SDK 36 installed via Android Studio SDK Manager
 
-### 1. Build and Sync Capacitor Native Android Assets
+### 1. Build Production Bundle & Sync Capacitor
 ```bash
 # Build the production web bundle
 npm run build
@@ -62,22 +85,19 @@ npx cap sync android
 ```bash
 npx cap open android
 ```
-Alternatively, open the `/android` directory directly in Android Studio.
 
 ### 3. Build Debug APK (For Testing on Physical Phone)
 ```bash
 cd android
 ./gradlew assembleDebug
-# The output APK will be at:
-# android/app/build/outputs/apk/debug/app-debug.apk
+# Output APK: android/app/build/outputs/apk/debug/app-debug.apk
 ```
-Connect your Android device with USB debugging enabled, then run:
+Connect your Android phone with USB debugging enabled:
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ### 4. Create Release Keystore for Google Play
-Run this command once in your terminal to create a 2048-bit RSA release signing key:
 ```bash
 keytool -genkey -v -keystore penfight-release-key.jks \
   -alias penfight \
@@ -85,37 +105,17 @@ keytool -genkey -v -keystore penfight-release-key.jks \
   -keysize 2048 \
   -validity 10000
 ```
-> ⚠️ **Important Security Note**: Never commit `penfight-release-key.jks` or passwords to git repository. Store it in a safe, backed-up location.
 
 ### 5. Build Android App Bundle (.aab) for Google Play Console
 ```bash
 cd android
 ./gradlew bundleRelease
-# Output AAB is located at:
-# android/app/build/outputs/bundle/release/app-release.aab
+# Output AAB: android/app/build/outputs/bundle/release/app-release.aab
 ```
 
 ---
 
-## 📋 Google Play Store Listing & Compliance Guide
-
-- **Target SDK**: Android 16 (API Level 36) — fully compliant with Google Play's latest requirements.
-- **Package ID**: `com.penfight.deskbrawl`
-- **Short Description (under 80 characters)**:
-  `Flick your pen, knock rivals off the wooden desk, and claim the championship!`
-- **Bangla Tagline**:
-  `কলম যুদ্ধ (Pen Fight) &middot; ব্যাকবেঞ্চের নস্টালজিক খেলা`
-- **Category**: Arcade / Sports / Board Game
-- **Content Rating**: Everyone (No violence, cartoon physical motion).
-- **Data Safety**: No personal data collected, stored, or shared.
-- **Closed Testing Requirement (Post-Nov 2023 Personal Accounts)**:
-  - If your Google Play Console personal account was created after Nov 13, 2023, you must run a closed test with at least **12 testers opted in continuously for 14 days** before applying for production access.
-
----
-
-## 🧪 Testing & Verification
-
-Run the automated physics logic unit tests:
-```bash
-npm run test # or npx tsx --test src/game/physics.test.ts
-```
+## 🔒 100% Offline-First Architecture
+- Audio synthesized via Web Audio API oscillators and noise buffers — no external MP3 dependencies.
+- Vector Canvas pen renderer renders genuine Matador needle tips, fluted barrels, clips, and grips at native device pixel ratio.
+- Zero telemetry, zero external fonts or CDN dependencies required for offline play.

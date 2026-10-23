@@ -251,7 +251,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           className="flex-1 py-2.5 px-3 bg-[#2c1a0e] hover:bg-[#3d2414] border border-[#6b4226] rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-[#e0a96d] shadow transition active:scale-95"
         >
           <Wrench className="w-4 h-4 text-[#d48c46]" />
-          <span>Desks</span>
+          <span>Tables</span>
         </button>
 
         <button

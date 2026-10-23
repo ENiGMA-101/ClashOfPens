@@ -4,6 +4,9 @@ import { InGamePlayer } from '../types/game';
 import { drawDetailedPen } from '../game/renderer';
 import { Sound } from '../game/audio';
 
+import { SeriesState } from '../game/seriesState';
+import { SeriesScoreboard } from './SeriesScoreboard';
+
 interface MatchOverModalProps {
   winner: InGamePlayer | null;
   eliminatedOrder: InGamePlayer[];
@@ -12,6 +15,8 @@ interface MatchOverModalProps {
   onRematch: () => void;
   onExit: () => void;
   onChangeOpponent?: () => void;
+  series?: SeriesState | null;
+  onContinueSeries?: () => void;
 }
 
 export const MatchOverModal: React.FC<MatchOverModalProps> = ({
@@ -22,6 +27,8 @@ export const MatchOverModal: React.FC<MatchOverModalProps> = ({
   onRematch,
   onExit,
   onChangeOpponent,
+  series,
+  onContinueSeries,
 }) => {
   const winnerCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -97,12 +104,29 @@ export const MatchOverModal: React.FC<MatchOverModalProps> = ({
             <Trophy className="w-7 h-7 fill-current" />
           </div>
           <h2 className="font-kalam font-extrabold text-3xl sm:text-4xl text-[#f5d061] leading-tight">
-            {winner ? `${winner.name} Wins!` : 'It’s a Draw!'}
+            {series && series.isComplete
+              ? `🏆 ${series.championName} is Series Champion!`
+              : winner
+              ? `${winner.name} Wins!`
+              : 'It’s a Draw!'}
           </h2>
           <p className="text-xs text-gray-300 font-bangla mt-0.5">
-            {winner ? 'ডেস্কের একমাত্র চ্যাম্পিয়ন কলম' : 'উভয় কলম একই সাথে খসিয়া পড়িল'}
+            {series && series.isComplete
+              ? 'সেরা ৫ সিরিজের চূড়ান্ত বিজয়ী!'
+              : series && series.pendingDrawReplay
+              ? 'ম্যাচ ড্র! কোনো পয়েন্ট যোগ হয়নি, পুনরায় খেলা হবে।'
+              : winner
+              ? 'ডেস্কের একমাত্র চ্যাম্পিয়ন কলম'
+              : 'উভয় কলম একই সাথে খসিয়া পড়িল'}
           </p>
         </div>
+
+        {/* Series Scoreboard if series is active */}
+        {series && (
+          <div className="my-2.5">
+            <SeriesScoreboard series={series} />
+          </div>
+        )}
 
         {/* Winner Pen Showcase */}
         {winner && (
@@ -177,32 +201,53 @@ export const MatchOverModal: React.FC<MatchOverModalProps> = ({
           ))}
         </div>
 
-        {/* Action Buttons: Rematch, Change Opponent, Main Menu */}
+        {/* Action Buttons: Next Game / Rematch, Change Opponent, Main Menu */}
         <div className="flex flex-col gap-2 mt-3 text-xs">
-          <div className="flex gap-2">
+          {series && !series.isComplete ? (
             <button
               onClick={() => {
                 Sound.playClick();
-                onRematch();
+                if (onContinueSeries) {
+                  onContinueSeries();
+                } else {
+                  onRematch();
+                }
               }}
-              className="flex-1 py-2.5 bg-gradient-to-r from-[#d4af37] via-[#f5d061] to-[#d4af37] text-black font-kalam font-extrabold text-base rounded-xl shadow-lg flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95 transition"
+              className="w-full py-3 bg-gradient-to-r from-[#d4af37] via-[#f5d061] to-[#d4af37] text-black font-kalam font-extrabold text-lg rounded-xl shadow-lg flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95 transition"
             >
-              <RotateCcw className="w-4 h-4" />
-              <span>Rematch</span>
+              <RotateCcw className="w-5 h-5" />
+              <span>
+                {series.pendingDrawReplay
+                  ? `Replay Draw (Game ${series.currentSlot})`
+                  : `Next Match (Game ${series.currentSlot} of 5)`}
+              </span>
             </button>
-            {onChangeOpponent && (
+          ) : (
+            <div className="flex gap-2">
               <button
                 onClick={() => {
                   Sound.playClick();
-                  onChangeOpponent();
+                  onRematch();
                 }}
-                className="flex-1 py-2.5 bg-[#382212] hover:bg-[#4d2f19] text-[#f5c518] font-kalam font-bold text-sm rounded-xl border border-[#6b4122] flex items-center justify-center gap-1.5 active:scale-95 transition"
+                className="flex-1 py-2.5 bg-gradient-to-r from-[#d4af37] via-[#f5d061] to-[#d4af37] text-black font-kalam font-extrabold text-base rounded-xl shadow-lg flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95 transition"
               >
-                <UserCheck className="w-4 h-4" />
-                <span>New Opponent</span>
+                <RotateCcw className="w-4 h-4" />
+                <span>{series && series.isComplete ? 'New Series' : 'Rematch'}</span>
               </button>
-            )}
-          </div>
+              {onChangeOpponent && (
+                <button
+                  onClick={() => {
+                    Sound.playClick();
+                    onChangeOpponent();
+                  }}
+                  className="flex-1 py-2.5 bg-[#382212] hover:bg-[#4d2f19] text-[#f5c518] font-kalam font-bold text-sm rounded-xl border border-[#6b4122] flex items-center justify-center gap-1.5 active:scale-95 transition"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>New Opponent</span>
+                </button>
+              )}
+            </div>
+          )}
           <button
             onClick={() => {
               Sound.playClick();

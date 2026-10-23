@@ -3,6 +3,9 @@ import { RotateCcw, Home, Sparkles, MessageCircle } from 'lucide-react';
 import { AttackSideIndex, GamePhase, InGamePlayer } from '../types/game';
 import { ATTACK_SIDES } from '../game/constants';
 import { Sound } from '../game/audio';
+import { PowerMeter } from './PowerMeter';
+import { SeriesScoreboard } from './SeriesScoreboard';
+import { SeriesState } from '../game/seriesState';
 
 interface GameHUDProps {
   players: InGamePlayer[];
@@ -13,10 +16,11 @@ interface GameHUDProps {
   bannerMessage: { title: string; sub?: string } | null;
   onSetPower: (val: number) => void;
   onSetSide: (side: AttackSideIndex) => void;
-  onFlick: () => void;
+  onFlick: (launchPower?: number) => void;
   onRestart: () => void;
   onExit: () => void;
   isPractice?: boolean;
+  series?: SeriesState | null;
 }
 
 export const GameHUD: React.FC<GameHUDProps> = ({
@@ -32,6 +36,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   onRestart,
   onExit,
   isPractice,
+  series,
 }) => {
   const currentPlayer = players[currentTurnIndex];
   const isHumanTurn =
@@ -112,6 +117,13 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Series Bo5 Scoreboard Overlay */}
+      {series && (
+        <div className="fixed top-24 right-3 z-20 pointer-events-auto max-w-xs animate-fade-in hidden sm:block">
+          <SeriesScoreboard series={series} compact />
+        </div>
+      )}
 
       {/* Center Dynamic Turn Banner */}
       {bannerMessage && (
@@ -205,49 +217,15 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             })}
           </div>
 
-          {/* Middle Row: Power Slider & Flick Action Button */}
-          <div className="flex items-center gap-3">
-            {/* Power Slider */}
-            <div className="flex-1 flex flex-col gap-1 bg-[#150d06] p-2 rounded-xl border border-[#38200f]">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-gray-300">Power (শক্তি)</span>
-                <span className="font-kalam font-extrabold text-base text-[#f5c518]">
-                  {power}%
-                </span>
-              </div>
-              <input
-                type="range"
-                min="5"
-                max="100"
-                value={power}
-                disabled={!isHumanTurn}
-                onChange={(e) => onSetPower(+e.target.value)}
-                className="w-full accent-[#d4af37] h-2 bg-[#2d180b] rounded-lg cursor-pointer disabled:opacity-50"
-              />
-            </div>
-
-            {/* FLICK BUTTON */}
-            <button
-              disabled={!isHumanTurn}
-              onClick={() => {
-                onFlick();
-              }}
-              className={`min-w-[120px] py-3.5 px-4 rounded-xl font-kalam font-black text-xl flex items-center justify-center gap-1.5 shadow-lg transition-all ${
-                isHumanTurn
-                  ? 'bg-gradient-to-r from-[#d4af37] via-[#f5d061] to-[#d4af37] text-black hover:brightness-110 active:scale-95 shadow-[#d4af37]/30'
-                  : 'bg-[#2a1b12] text-gray-500 border border-[#422919] cursor-not-allowed'
-              }`}
-            >
-              <Sparkles className="w-5 h-5 fill-current" />
-              <span>
-                {isMoving
-                  ? 'Sliding…'
-                  : currentPlayer?.isBot
-                  ? `${currentPlayer.botPersonality?.avatar || '🤖'} Thinking…`
-                  : 'FLICK!'}
-              </span>
-            </button>
-          </div>
+          {/* Middle Row: 8-Ball Pool Style Charge-and-Release Power Meter */}
+          <PowerMeter
+            power={power}
+            disabled={!isHumanTurn}
+            onSetPower={onSetPower}
+            onExecuteShot={(finalPower) => {
+              onFlick(finalPower);
+            }}
+          />
 
           {/* Bottom Hint */}
           <div className="flex items-center justify-between text-[11px] text-[#a89584] leading-tight px-1">
