@@ -162,7 +162,7 @@ export interface InGamePlayer {
   speechTime?: number;
 }
 
-export type GamePhase = 'aim' | 'launch' | 'moving' | 'settling' | 'over';
+export type GamePhase = 'placing' | 'handover' | 'aim' | 'launch' | 'moving' | 'settling' | 'over';
 export type GameMode = 'quick' | 'practice' | 'pass_and_play' | 'ai_battle' | 'challenge' | 'championship';
 
 export interface ChallengeItem {

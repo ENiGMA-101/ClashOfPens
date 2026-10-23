@@ -71,6 +71,7 @@ import {
 import { HeaderNav } from './components/HeaderNav';
 import { MainMenu } from './components/MainMenu';
 import { GameHUD } from './components/GameHUD';
+import { PenPlacementHUD } from './components/PenPlacementHUD';
 import { MatchSetupModal } from './components/MatchSetupModal';
 import { PenLockerModal } from './components/PenLockerModal';
 import { ArenaSelectorModal } from './components/ArenaSelectorModal';
@@ -81,6 +82,14 @@ import { SettingsModal } from './components/SettingsModal';
 import { HowToModal } from './components/HowToModal';
 import { MatchOverModal } from './components/MatchOverModal';
 import { AndroidReleaseModal } from './components/AndroidReleaseModal';
+import {
+  PenPlacement,
+  PlacementValidationResult,
+  SAFE_BOUNDARY_MARGIN,
+  validatePlacement,
+  generateRandomBotPlacement,
+  getSuggestedPlacement,
+} from './game/placement';
 
 const { Engine, Bodies, Body, Composite, Events } = Matter;
 
@@ -165,6 +174,30 @@ export default function App() {
   const [series, setSeries] = useState<SeriesState | null>(loadSavedSeriesState);
   const [lastPlayerConfigs, setLastPlayerConfigs] = useState<PlayerConfig[]>([]);
 
+  // Pen Placement Phase State
+  const [placementConfigs, setPlacementConfigs] = useState<PlayerConfig[]>([]);
+  const [placingIndex, setPlacingIndex] = useState<number>(0);
+  const [isHandover, setIsHandover] = useState<boolean>(false);
+  const [confirmedPlacements, setConfirmedPlacements] = useState<Record<number, PenPlacement>>({});
+  const [botPlacements, setBotPlacements] = useState<Record<number, PenPlacement>>({});
+  const [draftPlacement, setDraftPlacement] = useState<PenPlacement>({ x: 0, y: 0, angle: 0 });
+
+  const placingDragRef = useRef<{ isDragging: boolean; offsetX: number; offsetY: number }>({
+    isDragging: false,
+    offsetX: 0,
+    offsetY: 0,
+  });
+
+  const placementDraftRef = useRef<{
+    draft: PenPlacement;
+    valid: boolean;
+    player: PlayerConfig | null;
+  }>({
+    draft: { x: 0, y: 0, angle: 0 },
+    valid: true,
+    player: null,
+  });
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Mutable Game Loop State
@@ -233,6 +266,32 @@ export default function App() {
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
+
+  // Compute obstacles for the current placing player (all other confirmed pens + bots)
+  const placementObstacles = React.useMemo(() => {
+    const list: PenPlacement[] = [];
+    Object.entries(confirmedPlacements).forEach(([idx, p]) => {
+      if (Number(idx) !== placingIndex) list.push(p);
+    });
+    Object.values(botPlacements).forEach((p) => list.push(p));
+    return list;
+  }, [confirmedPlacements, placingIndex, botPlacements]);
+
+  // Real-time placement validation
+  const validationResult: PlacementValidationResult = React.useMemo(() => {
+    if (phase !== 'placing' && phase !== 'handover') return { valid: true };
+    const G = gameRef.current;
+    return validatePlacement(draftPlacement, placementObstacles, G.deskWidth, G.deskHeight);
+  }, [draftPlacement, placementObstacles, phase]);
+
+  // Keep mutable ref in sync for 60fps render loop
+  useEffect(() => {
+    placementDraftRef.current = {
+      draft: draftPlacement,
+      valid: validationResult.valid,
+      player: placementConfigs[placingIndex] || null,
+    };
+  }, [draftPlacement, validationResult.valid, placementConfigs, placingIndex]);
 
   // Show banner with auto-hide
   const showBanner = useCallback((title: string, sub?: string, duration = 1800) => {
@@ -598,56 +657,11 @@ export default function App() {
     beginTurn(nextIdx);
   }, [beginTurn, currentTurn, finishMatch]);
 
-  // Start new match
-  const startMatch = useCallback(
-    (
-      configs: PlayerConfig[],
-      mode: GameMode = 'quick',
-      format: MatchFormat = 'single',
-      keepSeries = false
-    ) => {
+  // Setup Matter physics collision listener
+  const setupCollisionHandler = useCallback(
+    (engine: Matter.Engine) => {
       const G = gameRef.current;
-      G.matchId++;
-      setGameMode(mode);
-      setIsPlaying(true);
-      setActiveModal('none');
-      setEliminatedHistory([]);
-      setMatchWinner(null);
-      setTurnsUsedInChallenge(0);
-      setLastPlayerConfigs(configs);
-
-      // Handle Best-of-5 Series Initialization
-      if (format === 'bo5') {
-        if (!keepSeries || !series || series.isComplete) {
-          const newSeries = createNewSeries(configs[0], configs[1], 'bo5');
-          setSeries(newSeries);
-        }
-      } else if (!keepSeries) {
-        setSeries(null);
-      }
-
-      updateLayout();
-      const currentTable = getTableConfig(selectedTableId, customDims);
-      G.deskCanvas = generateDeskCanvas(
-        G.deskWidth,
-        G.deskHeight,
-        currentTable as any,
-        Math.floor(Math.random() * 1e6)
-      );
-
-      if (G.engine) {
-        Events.off(G.engine, 'collisionStart', () => {});
-        Composite.clear(G.engine.world, false);
-      }
-
-      G.engine = Engine.create();
-      G.engine.gravity.x = 0;
-      G.engine.gravity.y = 0;
-      G.engine.positionIterations = 10;
-      G.engine.velocityIterations = 8;
-
-      // Matter collision event
-      Events.on(G.engine, 'collisionStart', (e: any) => {
+      Events.on(engine, 'collisionStart', (e: any) => {
         const now = performance.now();
         for (const pair of e.pairs) {
           const a = pair.bodyA.parent;
@@ -699,13 +713,55 @@ export default function App() {
           }
         }
       });
+    },
+    [settings.reducedMotion]
+  );
 
-      const isPortrait = G.deskWidth < G.deskHeight;
-      const spawns = getTableSpawnPositions(G.deskWidth, G.deskHeight, configs.length, isPortrait);
+  // Finalize match creation and physics bodies after placement phase completes
+  const finalizeMatchAfterPlacement = useCallback(
+    (
+      configs: PlayerConfig[],
+      confirmedHuman: Record<number, PenPlacement>,
+      confirmedBots: Record<number, PenPlacement>
+    ) => {
+      const G = gameRef.current;
+      const currentTable = getTableConfig(selectedTableId, customDims);
+
+      if (G.engine) {
+        Events.off(G.engine, 'collisionStart', () => {});
+        Composite.clear(G.engine.world, false);
+      }
+
+      G.engine = Engine.create();
+      G.engine.gravity.x = 0;
+      G.engine.gravity.y = 0;
+      G.engine.positionIterations = 10;
+      G.engine.velocityIterations = 8;
+      setupCollisionHandler(G.engine);
+
+      const allPlacements: PenPlacement[] = configs.map((cfg, i) => {
+        if (cfg.isBot) {
+          return (
+            confirmedBots[i] ||
+            generateRandomBotPlacement(
+              [],
+              G.deskWidth,
+              G.deskHeight,
+              Math.random,
+              i,
+              configs.length
+            )
+          );
+        }
+        return (
+          confirmedHuman[i] ||
+          getSuggestedPlacement(i, configs.length, G.deskWidth, G.deskHeight)
+        );
+      });
 
       G.players = configs.map((cfg, i) => {
         const skin = getSkin(cfg.skinId);
-        const spawn = spawns[i];
+        const spawn = allPlacements[i];
         const body = Bodies.rectangle(spawn.x, spawn.y, PEN_LENGTH, PEN_WIDTH, {
           chamfer: { radius: 7 },
           frictionAir: currentTable.frictionAir,
@@ -713,8 +769,10 @@ export default function App() {
           frictionStatic: 0.2,
           restitution: BASE_RESTITUTION,
           density: BASE_DENSITY,
-          angle: spawn.a,
+          angle: spawn.angle,
         });
+        Body.setVelocity(body, { x: 0, y: 0 });
+        Body.setAngularVelocity(body, 0);
         (body as any).deltaTime = SUB_DT;
         Composite.add(G.engine!.world, body);
 
@@ -745,10 +803,188 @@ export default function App() {
 
       G.fallen = [];
       G.fx = [];
+      showBanner('All Pens Placed! Match Starts!', 'Battle for the desk championship!');
       beginTurn(0);
     },
-    [beginTurn, customDims, selectedTableId, series, settings.reducedMotion, updateLayout]
+    [beginTurn, customDims, selectedTableId, setupCollisionHandler, showBanner]
   );
+
+  // Start new match
+  const startMatch = useCallback(
+    (
+      configs: PlayerConfig[],
+      mode: GameMode = 'quick',
+      format: MatchFormat = 'single',
+      keepSeries = false
+    ) => {
+      const G = gameRef.current;
+      G.matchId++;
+      setGameMode(mode);
+      setIsPlaying(true);
+      setActiveModal('none');
+      setEliminatedHistory([]);
+      setMatchWinner(null);
+      setTurnsUsedInChallenge(0);
+      setLastPlayerConfigs(configs);
+
+      // Handle Best-of-5 Series Initialization
+      if (format === 'bo5') {
+        if (!keepSeries || !series || series.isComplete) {
+          const newSeries = createNewSeries(configs[0], configs[1], 'bo5');
+          setSeries(newSeries);
+        }
+      } else if (!keepSeries) {
+        setSeries(null);
+      }
+
+      updateLayout();
+      const currentTable = getTableConfig(selectedTableId, customDims);
+      G.deskCanvas = generateDeskCanvas(
+        G.deskWidth,
+        G.deskHeight,
+        currentTable as any,
+        Math.floor(Math.random() * 1e6)
+      );
+
+      if (mode === 'challenge') {
+        // Challenges use preset puzzle coordinates
+        if (G.engine) {
+          Events.off(G.engine, 'collisionStart', () => {});
+          Composite.clear(G.engine.world, false);
+        }
+
+        G.engine = Engine.create();
+        G.engine.gravity.x = 0;
+        G.engine.gravity.y = 0;
+        G.engine.positionIterations = 10;
+        G.engine.velocityIterations = 8;
+        setupCollisionHandler(G.engine);
+
+        const isPortrait = G.deskWidth < G.deskHeight;
+        const spawns = getTableSpawnPositions(G.deskWidth, G.deskHeight, configs.length, isPortrait);
+
+        G.players = configs.map((cfg, i) => {
+          const skin = getSkin(cfg.skinId);
+          const spawn = spawns[i];
+          const body = Bodies.rectangle(spawn.x, spawn.y, PEN_LENGTH, PEN_WIDTH, {
+            chamfer: { radius: 7 },
+            frictionAir: currentTable.frictionAir,
+            friction: 0.12,
+            frictionStatic: 0.2,
+            restitution: BASE_RESTITUTION,
+            density: BASE_DENSITY,
+            angle: spawn.a,
+          });
+          (body as any).deltaTime = SUB_DT;
+          Composite.add(G.engine!.world, body);
+
+          return {
+            id: cfg.id,
+            name: cfg.name,
+            skin,
+            isBot: cfg.isBot,
+            idx: i,
+            body,
+            alive: true,
+            lastPower: 50,
+            lastSide: 1,
+            flickCount: 0,
+            knockouts: 0,
+          };
+        });
+
+        G.fallen = [];
+        G.fx = [];
+        beginTurn(0);
+      } else {
+        // Pen Placement Phase for AI Battle, Friendly Matches, and Quick matches
+        const initialBots: Record<number, PenPlacement> = {};
+        configs.forEach((cfg, idx) => {
+          if (cfg.isBot) {
+            const existing = Object.values(initialBots);
+            const botPos = generateRandomBotPlacement(
+              existing,
+              G.deskWidth,
+              G.deskHeight,
+              Math.random,
+              idx,
+              configs.length
+            );
+            initialBots[idx] = botPos;
+          }
+        });
+        setBotPlacements(initialBots);
+
+        const firstHumanIdx = configs.findIndex((c) => !c.isBot);
+        if (firstHumanIdx === -1) {
+          finalizeMatchAfterPlacement(configs, {}, initialBots);
+          return;
+        }
+
+        setPlacementConfigs(configs);
+        setPlacingIndex(firstHumanIdx);
+        setConfirmedPlacements({});
+        setIsHandover(false);
+
+        const initialDraft = getSuggestedPlacement(
+          firstHumanIdx,
+          configs.length,
+          G.deskWidth,
+          G.deskHeight
+        );
+        setDraftPlacement(initialDraft);
+
+        G.players = [];
+        G.fallen = [];
+        G.fx = [];
+        setPhase('placing');
+      }
+    },
+    [
+      beginTurn,
+      customDims,
+      finalizeMatchAfterPlacement,
+      selectedTableId,
+      series,
+      setupCollisionHandler,
+      updateLayout,
+    ]
+  );
+
+  // Handle human player confirming their placement
+  const handleConfirmPlacement = useCallback(() => {
+    const nextConfirmed = { ...confirmedPlacements, [placingIndex]: draftPlacement };
+    setConfirmedPlacements(nextConfirmed);
+
+    // Look for next human player after current
+    const nextHumanIdx = placementConfigs.findIndex((c, i) => i > placingIndex && !c.isBot);
+
+    if (nextHumanIdx !== -1) {
+      // Transition to private handover screen
+      setPlacingIndex(nextHumanIdx);
+      setIsHandover(true);
+      setPhase('handover');
+
+      // Suggested position for next player
+      const nextDraft = getSuggestedPlacement(
+        nextHumanIdx,
+        placementConfigs.length,
+        gameRef.current.deskWidth,
+        gameRef.current.deskHeight
+      );
+      setDraftPlacement(nextDraft);
+    } else {
+      // All human players placed! Finalize match and start
+      finalizeMatchAfterPlacement(placementConfigs, nextConfirmed, botPlacements);
+    }
+  }, [
+    botPlacements,
+    confirmedPlacements,
+    draftPlacement,
+    finalizeMatchAfterPlacement,
+    placementConfigs,
+    placingIndex,
+  ]);
 
   // Start Challenge match
   const startChallengeMatch = (ch: ChallengeItem) => {
@@ -1123,76 +1359,175 @@ export default function App() {
               ctx.restore();
             }
 
-            // Draw Alive Pens
-            for (const p of G.players.filter((q) => q.alive)) {
-              const b = p.body;
-              let px = b.position.x;
-              let py = b.position.y;
-              const isActive = p === curP && (phase === 'aim' || phase === 'launch');
+            // Draw Interactive Placement Preview if in placing phase
+            if (phase === 'placing' && placementDraftRef.current.player) {
+              const { draft, valid, player } = placementDraftRef.current;
+              const curSkin = getSkin(player.skinId);
 
-              // Launch cocking recoil animation
-              if (phase === 'launch' && p === curP) {
-                const k = Math.min(1, Math.max(0, (now - G.launchTime) / 160));
-                const recoil = -10 * Math.sin(k * Math.PI);
-                px += Math.cos(G.aimAngle) * recoil;
-                py += Math.sin(G.aimAngle) * recoil;
-              }
-
+              // 1. Playable desk boundary outline
               ctx.save();
-              ctx.translate(px, py);
-              ctx.rotate(b.angle);
-
-              // Dotted selection outline for active pen
-              if (isActive && phase === 'aim') {
-                ctx.save();
-                drawRoundedRect(
-                  ctx,
-                  -PEN_LENGTH / 2 - 8,
-                  -PEN_WIDTH / 2 - 8,
-                  PEN_LENGTH + 16,
-                  PEN_WIDTH + 16,
-                  14
-                );
-                ctx.strokeStyle = p.skin.ui;
-                ctx.lineWidth = 2.5;
-                ctx.setLineDash([8, 6]);
-                ctx.lineDashOffset = settings.reducedMotion ? 0 : -now / 35;
-                ctx.stroke();
-                ctx.restore();
-              }
-
-              drawDetailedPen(ctx, p.skin, {
-                shadow: { blur: 6 * scale, x: 3 * scale, y: 5 * scale },
-                activeSide: isActive ? side : null,
-                aura: p.skin.rarity === 'legendary',
-              });
-              ctx.restore();
-
-              // Player floating name tag above pen
-              ctx.save();
-              const fs = 13 / scale;
-              ctx.font = `bold ${fs}px 'Hind Siliguri', sans-serif`;
-              const tagText = p.name;
-              const tagWidth = ctx.measureText(tagText).width + 16 / scale;
-              const tagHeight = fs * 1.6;
-              const tagY = b.position.y - PEN_LENGTH * 0.35;
-
-              ctx.fillStyle = isActive ? p.skin.ui : 'rgba(20, 12, 6, 0.7)';
+              ctx.strokeStyle = 'rgba(212, 175, 55, 0.45)';
+              ctx.lineWidth = Math.max(1.5, 2 / scale);
+              ctx.setLineDash([8 / scale, 6 / scale]);
               drawRoundedRect(
                 ctx,
-                b.position.x - tagWidth / 2,
+                SAFE_BOUNDARY_MARGIN,
+                SAFE_BOUNDARY_MARGIN,
+                G.deskWidth - 2 * SAFE_BOUNDARY_MARGIN,
+                G.deskHeight - 2 * SAFE_BOUNDARY_MARGIN,
+                14
+              );
+              ctx.stroke();
+              ctx.restore();
+
+              // 2. Draft pen
+              ctx.save();
+              ctx.translate(draft.x, draft.y);
+              ctx.rotate(draft.angle);
+
+              // Validation aura / outline
+              ctx.save();
+              drawRoundedRect(
+                ctx,
+                -PEN_LENGTH / 2 - 8,
+                -PEN_WIDTH / 2 - 8,
+                PEN_LENGTH + 16,
+                PEN_WIDTH + 16,
+                14
+              );
+              if (valid) {
+                ctx.strokeStyle = curSkin.ui || '#22c55e';
+                ctx.lineWidth = Math.max(2, 2.5 / scale);
+                ctx.shadowColor = curSkin.ui || '#22c55e';
+                ctx.shadowBlur = 14 * scale;
+              } else {
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = Math.max(2.5, 3 / scale);
+                ctx.shadowColor = '#ef4444';
+                ctx.shadowBlur = 18 * scale;
+              }
+              ctx.stroke();
+              ctx.restore();
+
+              // Pen body
+              drawDetailedPen(ctx, curSkin, {
+                shadow: { blur: 10 * scale, x: 3 * scale, y: 6 * scale },
+                activeSide: 1,
+                aura: curSkin.rarity === 'legendary',
+              });
+
+              // Nib direction indicator
+              ctx.save();
+              ctx.fillStyle = valid ? '#ffffff' : '#fca5a5';
+              ctx.beginPath();
+              ctx.arc(PEN_LENGTH / 2 - 10, 0, Math.max(3, 4 / scale), 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+
+              ctx.restore();
+
+              // Floating tag above pen
+              ctx.save();
+              const fs = Math.max(12, 14 / scale);
+              ctx.font = `bold ${fs}px 'Hind Siliguri', sans-serif`;
+              const tagText = `${player.name} (Drag & Rotate)`;
+              const tagWidth = ctx.measureText(tagText).width + 20 / scale;
+              const tagHeight = fs * 1.8;
+              const tagY = draft.y - PEN_LENGTH * 0.36;
+
+              ctx.fillStyle = valid ? 'rgba(24, 14, 7, 0.88)' : 'rgba(127, 29, 29, 0.92)';
+              drawRoundedRect(
+                ctx,
+                draft.x - tagWidth / 2,
                 tagY - tagHeight,
                 tagWidth,
                 tagHeight,
                 tagHeight / 2
               );
               ctx.fill();
+              ctx.strokeStyle = valid ? curSkin.ui : '#ef4444';
+              ctx.lineWidth = Math.max(1, 1.5 / scale);
+              ctx.stroke();
 
               ctx.fillStyle = '#ffffff';
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
-              ctx.fillText(tagText, b.position.x, tagY - tagHeight / 2 + 1 / scale);
+              ctx.fillText(tagText, draft.x, tagY - tagHeight / 2 + 1 / scale);
               ctx.restore();
+            }
+
+            // Draw Alive Pens only when NOT in placement or handover
+            if (phase !== 'placing' && phase !== 'handover') {
+              for (const p of G.players.filter((q) => q.alive)) {
+                const b = p.body;
+                let px = b.position.x;
+                let py = b.position.y;
+                const isActive = p === curP && (phase === 'aim' || phase === 'launch');
+
+                // Launch cocking recoil animation
+                if (phase === 'launch' && p === curP) {
+                  const k = Math.min(1, Math.max(0, (now - G.launchTime) / 160));
+                  const recoil = -10 * Math.sin(k * Math.PI);
+                  px += Math.cos(G.aimAngle) * recoil;
+                  py += Math.sin(G.aimAngle) * recoil;
+                }
+
+                ctx.save();
+                ctx.translate(px, py);
+                ctx.rotate(b.angle);
+
+                // Dotted selection outline for active pen
+                if (isActive && phase === 'aim') {
+                  ctx.save();
+                  drawRoundedRect(
+                    ctx,
+                    -PEN_LENGTH / 2 - 8,
+                    -PEN_WIDTH / 2 - 8,
+                    PEN_LENGTH + 16,
+                    PEN_WIDTH + 16,
+                    14
+                  );
+                  ctx.strokeStyle = p.skin.ui;
+                  ctx.lineWidth = 2.5;
+                  ctx.setLineDash([8, 6]);
+                  ctx.lineDashOffset = settings.reducedMotion ? 0 : -now / 35;
+                  ctx.stroke();
+                  ctx.restore();
+                }
+
+                drawDetailedPen(ctx, p.skin, {
+                  shadow: { blur: 6 * scale, x: 3 * scale, y: 5 * scale },
+                  activeSide: isActive ? side : null,
+                  aura: p.skin.rarity === 'legendary',
+                });
+                ctx.restore();
+
+                // Player floating name tag above pen
+                ctx.save();
+                const fs = 13 / scale;
+                ctx.font = `bold ${fs}px 'Hind Siliguri', sans-serif`;
+                const tagText = p.name;
+                const tagWidth = ctx.measureText(tagText).width + 16 / scale;
+                const tagHeight = fs * 1.6;
+                const tagY = b.position.y - PEN_LENGTH * 0.35;
+
+                ctx.fillStyle = isActive ? p.skin.ui : 'rgba(20, 12, 6, 0.7)';
+                drawRoundedRect(
+                  ctx,
+                  b.position.x - tagWidth / 2,
+                  tagY - tagHeight,
+                  tagWidth,
+                  tagHeight,
+                  tagHeight / 2
+                );
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(tagText, b.position.x, tagY - tagHeight / 2 + 1 / scale);
+                ctx.restore();
+              }
             }
 
             // Draw Fallen Pens
@@ -1275,13 +1610,58 @@ export default function App() {
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     const G = gameRef.current;
+
+    if (phase === 'placing') {
+      const rect = canvas.getBoundingClientRect();
+      const wx = (e.clientX - rect.left - G.view.ox) / G.view.scale;
+      const wy = (e.clientY - rect.top - G.view.oy) / G.view.scale;
+
+      const dist = Math.hypot(wx - draftPlacement.x, wy - draftPlacement.y);
+      if (dist < PEN_LENGTH / 2 + 35) {
+        // Direct pen grab
+        placingDragRef.current = {
+          isDragging: true,
+          offsetX: wx - draftPlacement.x,
+          offsetY: wy - draftPlacement.y,
+        };
+      } else {
+        // Tap on desk to reposition pen center
+        const clampedX = Math.max(30, Math.min(G.deskWidth - 30, wx));
+        const clampedY = Math.max(30, Math.min(G.deskHeight - 30, wy));
+        setDraftPlacement((prev) => ({ ...prev, x: clampedX, y: clampedY }));
+        placingDragRef.current = {
+          isDragging: true,
+          offsetX: 0,
+          offsetY: 0,
+        };
+      }
+      return;
+    }
+
     G.isDragging = true;
     handleAimPointer(e.clientX, e.clientY);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     const G = gameRef.current;
+
+    if (phase === 'placing') {
+      if (placingDragRef.current.isDragging) {
+        const rect = canvas.getBoundingClientRect();
+        const wx = (e.clientX - rect.left - G.view.ox) / G.view.scale;
+        const wy = (e.clientY - rect.top - G.view.oy) / G.view.scale;
+        const nx = Math.max(20, Math.min(G.deskWidth - 20, wx - placingDragRef.current.offsetX));
+        const ny = Math.max(20, Math.min(G.deskHeight - 20, wy - placingDragRef.current.offsetY));
+        setDraftPlacement((prev) => ({ ...prev, x: nx, y: ny }));
+      }
+      return;
+    }
+
     if (G.isDragging) {
       handleAimPointer(e.clientX, e.clientY);
     }
@@ -1289,6 +1669,10 @@ export default function App() {
 
   const handlePointerUp = () => {
     const G = gameRef.current;
+    if (phase === 'placing') {
+      placingDragRef.current.isDragging = false;
+      return;
+    }
     G.isDragging = false;
   };
 
@@ -1318,7 +1702,9 @@ export default function App() {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        className="absolute inset-0 w-full h-full block cursor-crosshair touch-none"
+        className={`absolute inset-0 w-full h-full block touch-none ${
+          phase === 'placing' ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair'
+        }`}
       />
 
       {/* Main Menu Overlay if not currently in game */}
@@ -1341,8 +1727,37 @@ export default function App() {
         </div>
       )}
 
+      {/* Pen Placement Phase Overlay */}
+      {isPlaying && (phase === 'placing' || phase === 'handover') && (
+        <PenPlacementHUD
+          playerConfigs={placementConfigs}
+          currentPlacingIndex={placingIndex}
+          draftPlacement={draftPlacement}
+          isValid={validationResult.valid}
+          validationError={validationResult.reason}
+          isHandover={isHandover}
+          isAiMatch={placementConfigs.some((c) => c.isBot)}
+          onUpdateDraft={(updates) => setDraftPlacement((prev) => ({ ...prev, ...updates }))}
+          onResetPosition={() => {
+            const suggested = getSuggestedPlacement(
+              placingIndex,
+              placementConfigs.length,
+              gameRef.current.deskWidth,
+              gameRef.current.deskHeight
+            );
+            setDraftPlacement(suggested);
+          }}
+          onConfirmPlacement={handleConfirmPlacement}
+          onContinueHandover={() => {
+            setIsHandover(false);
+            setPhase('placing');
+          }}
+          onExit={() => setIsPlaying(false)}
+        />
+      )}
+
       {/* In-Game HUD overlay when match active */}
-      {isPlaying && (
+      {isPlaying && phase !== 'placing' && phase !== 'handover' && (
         <GameHUD
           players={gameRef.current.players}
           currentTurnIndex={currentTurn}
@@ -1361,12 +1776,15 @@ export default function App() {
           }}
           onFlick={(launchPower) => handleFlick(launchPower)}
           onRestart={() => {
-            const configs = gameRef.current.players.map((p) => ({
+            const configs = (lastPlayerConfigs.length > 0
+              ? lastPlayerConfigs
+              : gameRef.current.players
+            ).map((p) => ({
               id: p.id,
               name: p.name,
-              skinId: p.skin.id,
+              skinId: (p as any).skin?.id || (p as any).skinId,
               isBot: p.isBot,
-              botPersonalityId: p.botPersonality?.id,
+              botPersonalityId: (p as any).botPersonality?.id || (p as any).botPersonalityId,
             }));
             startMatch(configs, gameMode, series ? 'bo5' : 'single', true);
           }}
