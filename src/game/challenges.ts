@@ -14,7 +14,7 @@ export const CHALLENGES_DATA: ChallengeItem[] = [
     maxTurns: 1,
     sideRequired: 1,
     playerPos: { x: 380, y: 320, a: 0 },
-    targets: [{ x: 620, y: 320, a: 0, skinId: 'black', name: 'Exam Bot' }],
+    targets: [{ x: 620, y: 320, a: 0, skinId: 'matador_alltime', name: 'Backbench Rival' }],
   },
   {
     id: 'ch_spin_curve',
@@ -29,7 +29,7 @@ export const CHALLENGES_DATA: ChallengeItem[] = [
     maxTurns: 2,
     sideRequired: 0,
     playerPos: { x: 300, y: 460, a: -0.4 },
-    targets: [{ x: 550, y: 200, a: 0.8, skinId: 'red', name: 'Art Bot' }],
+    targets: [{ x: 550, y: 200, a: 0.8, skinId: 'matador_iteen', name: 'Art Class Pen' }],
   },
   {
     id: 'ch_heavy_slam',
@@ -44,7 +44,7 @@ export const CHALLENGES_DATA: ChallengeItem[] = [
     maxTurns: 2,
     sideRequired: 2,
     playerPos: { x: 280, y: 320, a: 0 },
-    targets: [{ x: 700, y: 320, a: Math.PI / 2, skinId: 'jute', name: 'Titan Bot' }],
+    targets: [{ x: 700, y: 320, a: Math.PI / 2, skinId: 'matador_woodmark', name: 'Topper Heavy Pen' }],
   },
   {
     id: 'ch_edge_survival',
@@ -58,7 +58,7 @@ export const CHALLENGES_DATA: ChallengeItem[] = [
     targetCount: 1,
     maxTurns: 2,
     playerPos: { x: 90, y: 320, a: 0 },
-    targets: [{ x: 480, y: 320, a: 0, skinId: 'tiger', name: 'Stalker Bot' }],
+    targets: [{ x: 480, y: 320, a: 0, skinId: 'ember_flame', name: 'Destroyer Pen' }],
   },
   {
     id: 'ch_double_trouble',
@@ -73,15 +73,15 @@ export const CHALLENGES_DATA: ChallengeItem[] = [
     maxTurns: 3,
     playerPos: { x: 450, y: 500, a: -Math.PI / 2 },
     targets: [
-      { x: 300, y: 220, a: 0.2, skinId: 'green', name: 'Rival 1' },
-      { x: 650, y: 220, a: -0.2, skinId: 'violet', name: 'Rival 2' },
+      { x: 300, y: 220, a: 0.2, skinId: 'matador_glory_crystal', name: 'Crystal Rival' },
+      { x: 650, y: 220, a: -0.2, skinId: 'matador_orbit', name: 'Orbit Rival' },
     ],
   },
   {
     id: 'ch_master_brawl',
     title: 'The Headmaster Duel',
     banglaTitle: 'হেডমাস্টারের চ্যালেঞ্জ',
-    desc: 'A duel against the legendary Sharp AI wielding the Thunder Rani skin. Precision aiming and distance control are required!',
+    desc: 'A duel against the legendary Sharp AI wielding the Thunder Strike skin. Precision aiming and distance control are required!',
     rewardCoins: 600,
     rewardXp: 800,
     difficulty: 'Hard',
@@ -89,6 +89,6 @@ export const CHALLENGES_DATA: ChallengeItem[] = [
     targetCount: 1,
     maxTurns: 4,
     playerPos: { x: 300, y: 320, a: 0 },
-    targets: [{ x: 720, y: 320, a: Math.PI, skinId: 'thunder', name: 'Headmaster Pen' }],
+    targets: [{ x: 720, y: 320, a: Math.PI, skinId: 'thunder_strike', name: 'Headmaster Thunder' }],
   },
 ];

@@ -56,93 +56,113 @@ function drawPenPattern(
   ctx.fillStyle = skin.accent || '#ffffff';
 
   switch (skin.pattern) {
-    case 'stripes':
-      for (let x = x0 + 4; x < x1; x += 13) {
-        ctx.beginPath();
-        ctx.moveTo(x, -h);
-        ctx.quadraticCurveTo(x + 5, -h * 0.3, x + 1.5, -h * 0.02);
-        ctx.lineTo(x + 4, -h);
-        ctx.fill();
+    case 'alltime_ribs':
+      // Hexagonal longitudinal facet lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(x0, -h * 0.35);
+      ctx.lineTo(x1, -h * 0.35);
+      ctx.moveTo(x0, h * 0.35);
+      ctx.lineTo(x1, h * 0.35);
+      ctx.stroke();
 
-        ctx.beginPath();
-        ctx.moveTo(x + 6, h);
-        ctx.quadraticCurveTo(x + 11, h * 0.3, x + 7.5, h * 0.04);
-        ctx.lineTo(x + 10, h);
-        ctx.fill();
-      }
-      break;
-
-    case 'rain':
-      ctx.lineWidth = 1.2;
-      ctx.lineCap = 'round';
-      for (let x = x0 + 3, i = 0; x < x1; x += 6.5, i++) {
-        const y = ((i * 37) % 11) - 5.5;
-        ctx.beginPath();
-        ctx.moveTo(x, y - 2.5);
-        ctx.lineTo(x - 1.8, y + 2.5);
-        ctx.stroke();
-      }
-      break;
-
-    case 'bolt': {
-      ctx.lineWidth = 1.9;
-      ctx.lineJoin = 'miter';
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.lineWidth = 0.8;
       ctx.beginPath();
       ctx.moveTo(x0, 0);
-      let up = true;
-      for (let x = x0; x < x1 - 4; x += 9) {
-        ctx.lineTo(x + 9, up ? -h * 0.55 : h * 0.55);
-        up = !up;
-      }
+      ctx.lineTo(x1, 0);
       ctx.stroke();
       break;
-    }
 
-    case 'petals':
-      for (let x = x0 + 9; x < x1 - 4; x += 17) {
+    case 'iteen_grooves':
+      // Dynamic youth wavy grooves
+      ctx.lineWidth = 1.2;
+      for (let x = x0 + 6; x < x1; x += 12) {
         ctx.beginPath();
-        ctx.ellipse(x, -h * 0.38, 4.6, 2.1, -0.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.ellipse(x, h * 0.38, 4.6, 2.1, 0.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(x + 3.8, 0, 1.4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      break;
-
-    case 'chevron':
-      ctx.lineWidth = 1.8;
-      for (let x = x0 + 4; x < x1 - 4; x += 10) {
-        ctx.beginPath();
-        ctx.moveTo(x, -h * 0.7);
-        ctx.lineTo(x + 5, 0);
-        ctx.lineTo(x, h * 0.7);
+        ctx.moveTo(x, -h * 0.6);
+        ctx.quadraticCurveTo(x + 4, 0, x, h * 0.6);
         ctx.stroke();
       }
       break;
 
-    case 'weave':
+    case 'rio_carnival':
+      // Festive multi-color carnival confetti dashes
+      const colors = ['#facc15', '#22c55e', '#38bdf8', '#f43f5e'];
+      for (let x = x0 + 4, i = 0; x < x1; x += 9, i++) {
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillRect(x, ((i * 17) % 7) - 3.5, 4, 2);
+      }
+      break;
+
+    case 'hischool_band':
+      // Crisp white racing band of Matador Hi-School
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x0 + (x1 - x0) * 0.65, -h, 8, h * 2);
+      ctx.fillRect(x0 + (x1 - x0) * 0.72, -h, 2.5, h * 2);
+      break;
+
+    case 'crystal_facets':
+      // Diamond crystal facets
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      for (let x = x0 + 5; x < x1 - 10; x += 14) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + 5, -h * 0.8);
+        ctx.lineTo(x + 10, 0);
+        ctx.lineTo(x + 5, h * 0.8);
+        ctx.closePath();
+        ctx.fill();
+      }
+      break;
+
+    case 'envoy_gold':
+      // Dual 24K gold executive rings
+      ctx.fillStyle = '#ffd700';
+      ctx.fillRect(x0 + 8, -h, 3, h * 2);
+      ctx.fillRect(x1 - 12, -h, 3.5, h * 2);
+      ctx.fillRect(x1 - 6, -h, 1.5, h * 2);
+      break;
+
+    case 'radiant_glow':
+      // Shimmer pastel waves
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      for (let x = x0 + 6; x < x1; x += 16) {
+        ctx.fillRect(x, -h * 0.7, 5, h * 1.4);
+      }
+      break;
+
+    case 'woodmark_grain':
+      // Authentic woodgrain printed texture
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
       ctx.lineWidth = 0.9;
-      ctx.globalAlpha = 0.65;
-      for (let x = x0 - 20; x < x1; x += 5) {
+      for (let y = -h * 0.6; y <= h * 0.6; y += 3) {
         ctx.beginPath();
-        ctx.moveTo(x, -h);
-        ctx.lineTo(x + 16, h);
-        ctx.moveTo(x + 16, -h);
-        ctx.lineTo(x, h);
+        ctx.moveTo(x0, y);
+        for (let x = x0; x < x1; x += 10) {
+          ctx.lineTo(x + 10, y + Math.sin(x * 0.1) * 1.2);
+        }
         ctx.stroke();
       }
-      ctx.globalAlpha = 1;
       break;
 
-    case 'gold':
-      // Gold lustrous reflective bands
-      ctx.fillStyle = 'rgba(255, 250, 220, 0.75)';
-      for (let x = x0 + 8; x < x1; x += 18) {
-        ctx.fillRect(x, -h * 0.85, 3.5, h * 1.7);
+    case 'orbit_rings':
+      // Dual orbital grip rings
+      ctx.fillStyle = '#818cf8';
+      ctx.fillRect(x1 - 18, -h, 4, h * 2);
+      ctx.fillRect(x1 - 10, -h, 4, h * 2);
+      break;
+
+    case 'smoothy_wave':
+      // Smoothy fluid ink curve
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x0, 0);
+      for (let x = x0; x < x1; x += 6) {
+        ctx.lineTo(x + 6, Math.sin(x * 0.15) * h * 0.5);
       }
+      ctx.stroke();
       break;
 
     case 'neon':
@@ -159,6 +179,23 @@ function drawPenPattern(
       ctx.shadowBlur = 0;
       break;
 
+    case 'thunder':
+      // Jagged electric lightning bolts
+      ctx.lineWidth = 2.0;
+      ctx.strokeStyle = '#fde047';
+      ctx.shadowColor = '#facc15';
+      ctx.shadowBlur = 5;
+      ctx.beginPath();
+      ctx.moveTo(x0, 0);
+      let up = true;
+      for (let x = x0; x < x1 - 4; x += 9) {
+        ctx.lineTo(x + 9, up ? -h * 0.6 : h * 0.6);
+        up = !up;
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      break;
+
     case 'stars':
       // Cosmic stardust
       for (let x = x0 + 6; x < x1; x += 9) {
@@ -167,6 +204,58 @@ function drawPenPattern(
         ctx.arc(x, sy, 1.2, 0, Math.PI * 2);
         ctx.fill();
       }
+      break;
+
+    case 'gold':
+      // Mirror gold lustrous reflective bands
+      ctx.fillStyle = 'rgba(255, 250, 220, 0.75)';
+      for (let x = x0 + 8; x < x1; x += 18) {
+        ctx.fillRect(x, -h * 0.85, 3.5, h * 1.7);
+      }
+      break;
+
+    case 'flame':
+      // Roaring fire tongues
+      for (let x = x0 + 5; x < x1 - 5; x += 12) {
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        ctx.moveTo(x, h * 0.7);
+        ctx.quadraticCurveTo(x + 3, 0, x + 5, -h * 0.6);
+        ctx.quadraticCurveTo(x + 7, 0, x + 10, h * 0.7);
+        ctx.closePath();
+        ctx.fill();
+      }
+      break;
+
+    case 'frost':
+      // Glacial frost fractals
+      ctx.strokeStyle = '#e0f2fe';
+      ctx.lineWidth = 1.2;
+      for (let x = x0 + 8; x < x1; x += 14) {
+        ctx.beginPath();
+        ctx.moveTo(x, -h * 0.5);
+        ctx.lineTo(x, h * 0.5);
+        ctx.moveTo(x - 3, -h * 0.25);
+        ctx.lineTo(x + 3, h * 0.25);
+        ctx.moveTo(x + 3, -h * 0.25);
+        ctx.lineTo(x - 3, h * 0.25);
+        ctx.stroke();
+      }
+      break;
+
+    case 'dragon':
+      // Crimson dragon scale armor
+      ctx.fillStyle = '#facc15';
+      ctx.globalAlpha = 0.5;
+      for (let x = x0 + 5; x < x1; x += 8) {
+        ctx.beginPath();
+        ctx.arc(x, -h * 0.3, 3, 0, Math.PI);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x + 4, h * 0.3, 3, 0, Math.PI);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1.0;
       break;
 
     default:
@@ -185,11 +274,17 @@ export function drawDetailedPen(
   skin: PenSkin,
   options: DrawPenOptions = {}
 ): void {
-  const h = PEN_WIDTH / 2;
+  const isPinPoint = skin.modelGeometry === 'pinpoint';
+  const isAllTime = skin.modelGeometry === 'alltime';
+  const isExecutive = skin.modelGeometry === 'executive';
+
+  // Proportions: Pin-Point is slightly slimmer and needle-pointed
+  const penWidth = isPinPoint ? PEN_WIDTH - 1.8 : PEN_WIDTH;
+  const h = penWidth / 2;
   const back = -PEN_LENGTH / 2;
   const tip = PEN_LENGTH / 2;
-  const coneStart = tip - 16;
-  const gripStart = tip - 40;
+  const coneStart = isPinPoint ? tip - 22 : tip - 16;
+  const gripStart = isPinPoint ? tip - 46 : tip - 40;
 
   // 1. Drop Shadow
   ctx.save();
@@ -200,13 +295,13 @@ export function drawDetailedPen(
     ctx.shadowOffsetY = options.shadow.y;
   }
   ctx.fillStyle = skin.translucent ? 'rgba(210, 218, 226, 0.95)' : skin.body;
-  drawRoundedRect(ctx, back, -h, coneStart - back + 1, PEN_WIDTH, 4);
+  drawRoundedRect(ctx, back, -h, coneStart - back + 1, penWidth, 4);
   ctx.fill();
 
   ctx.beginPath();
   ctx.moveTo(coneStart, -h * 0.8);
-  ctx.lineTo(tip - 1, -1.3);
-  ctx.lineTo(tip - 1, 1.3);
+  ctx.lineTo(tip - 1, -1.2);
+  ctx.lineTo(tip - 1, 1.2);
   ctx.lineTo(coneStart, h * 0.8);
   ctx.closePath();
   ctx.fill();
@@ -215,10 +310,18 @@ export function drawDetailedPen(
   // 2. Main Barrel
   const barrelGradient = ctx.createLinearGradient(0, -h, 0, h);
   if (skin.translucent) {
-    barrelGradient.addColorStop(0, 'rgba(170, 180, 195, 0.96)');
-    barrelGradient.addColorStop(0.25, 'rgba(255, 255, 255, 0.98)');
-    barrelGradient.addColorStop(0.5, 'rgba(225, 232, 240, 0.94)');
-    barrelGradient.addColorStop(1, 'rgba(145, 155, 170, 0.96)');
+    if (isPinPoint) {
+      // Clear translucent plastic of Pin-Point
+      barrelGradient.addColorStop(0, 'rgba(180, 195, 210, 0.92)');
+      barrelGradient.addColorStop(0.28, 'rgba(255, 255, 255, 0.98)');
+      barrelGradient.addColorStop(0.55, 'rgba(230, 240, 250, 0.90)');
+      barrelGradient.addColorStop(1, 'rgba(160, 175, 190, 0.94)');
+    } else {
+      barrelGradient.addColorStop(0, 'rgba(170, 180, 195, 0.96)');
+      barrelGradient.addColorStop(0.25, 'rgba(255, 255, 255, 0.98)');
+      barrelGradient.addColorStop(0.5, 'rgba(225, 232, 240, 0.94)');
+      barrelGradient.addColorStop(1, 'rgba(145, 155, 170, 0.96)');
+    }
   } else {
     barrelGradient.addColorStop(0, shadeColor(skin.body, -0.35));
     barrelGradient.addColorStop(0.28, shadeColor(skin.body, 0.3));
@@ -226,18 +329,21 @@ export function drawDetailedPen(
     barrelGradient.addColorStop(1, shadeColor(skin.body, -0.45));
   }
   ctx.fillStyle = barrelGradient;
-  drawRoundedRect(ctx, back + 2, -h, gripStart - back - 1, PEN_WIDTH, 3);
+  drawRoundedRect(ctx, back + 2, -h, gripStart - back - 1, penWidth, 3);
   ctx.fill();
 
   // 3. Translucent Inner Refill Tube OR Pattern
   if (skin.translucent) {
-    // Ink reservoir inside plastic
+    // Ink reservoir inside plastic (narrower tube for Pin-Point)
+    const tubeH = isPinPoint ? 2.8 : 3.8;
     ctx.fillStyle = skin.body;
-    drawRoundedRect(ctx, back + 14, -1.9, coneStart - back - 12, 3.8, 1.9);
+    drawRoundedRect(ctx, back + 14, -tubeH / 2, coneStart - back - 14, tubeH, tubeH / 2);
     ctx.fill();
+
     // Inner tube highlight
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.fillRect(back + 15, -1.4, coneStart - back - 15, 0.9);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.fillRect(back + 15, -tubeH / 2 + 0.3, coneStart - back - 16, 0.8);
+
     // Inner plastic walls
     ctx.strokeStyle = 'rgba(110, 122, 136, 0.35)';
     ctx.lineWidth = 0.6;
@@ -247,9 +353,31 @@ export function drawDetailedPen(
     ctx.moveTo(back + 12, h * 0.5);
     ctx.lineTo(gripStart, h * 0.5);
     ctx.stroke();
-  } else if (skin.pattern && skin.pattern !== 'none') {
+
+    // Authentic Brand Label Impression printed on barrel
+    if (isPinPoint) {
+      ctx.save();
+      ctx.fillStyle = skin.cap;
+      ctx.font = 'bold 5px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('MATADOR PIN-POINT 0.5', (back + gripStart) / 2, 0);
+      ctx.restore();
+    } else if (isAllTime) {
+      ctx.save();
+      ctx.fillStyle = skin.cap;
+      ctx.font = 'bold 5px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('MATADOR ALL-TIME', (back + gripStart) / 2, 0);
+      ctx.restore();
+    }
+  }
+
+  // Draw specific pattern if present
+  if (skin.pattern && skin.pattern !== 'none') {
     ctx.save();
-    drawRoundedRect(ctx, back + 2, -h, gripStart - back - 1, PEN_WIDTH, 3);
+    drawRoundedRect(ctx, back + 2, -h, gripStart - back - 1, penWidth, 3);
     ctx.clip();
     drawPenPattern(ctx, skin, back + 12, gripStart, h);
     ctx.restore();
@@ -257,20 +385,20 @@ export function drawDetailedPen(
 
   // 4. Barrel Specular Highlight
   ctx.fillStyle = 'rgba(255, 255, 255, 0.32)';
-  ctx.fillRect(back + 12, -h * 0.58, gripStart - back - 14, 1.6);
+  ctx.fillRect(back + 12, -h * 0.58, gripStart - back - 14, 1.5);
 
-  // 5. Rubber Grip
+  // 5. Grip Section
   const gripGradient = ctx.createLinearGradient(0, -h, 0, h);
   gripGradient.addColorStop(0, shadeColor(skin.grip, -0.3));
   gripGradient.addColorStop(0.35, shadeColor(skin.grip, 0.22));
   gripGradient.addColorStop(1, shadeColor(skin.grip, -0.4));
   ctx.fillStyle = gripGradient;
-  drawRoundedRect(ctx, gripStart, -h + 0.6, coneStart - gripStart + 1, PEN_WIDTH - 1.2, 2);
+  drawRoundedRect(ctx, gripStart, -h + 0.6, coneStart - gripStart + 1, penWidth - 1.2, 2);
   ctx.fill();
 
   // Grip finger ribs
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-  ctx.lineWidth = 0.9;
+  ctx.strokeStyle = isExecutive ? '#ffd700' : 'rgba(0, 0, 0, 0.3)';
+  ctx.lineWidth = isExecutive ? 1.2 : 0.9;
   ctx.beginPath();
   for (let x = gripStart + 3; x < coneStart - 1; x += 3.2) {
     ctx.moveTo(x, -h + 1.5);
@@ -278,26 +406,45 @@ export function drawDetailedPen(
   }
   ctx.stroke();
 
-  // 6. Metal Cone & Ballpoint Tip
+  // 6. Metal Cone & Ballpoint Writing Tip
   const coneGrad = ctx.createLinearGradient(0, -h, 0, h);
-  coneGrad.addColorStop(0, '#787e86');
-  coneGrad.addColorStop(0.32, '#f8f9fa');
-  coneGrad.addColorStop(0.62, '#b8bdc4');
-  coneGrad.addColorStop(1, '#5c6168');
+  if (isExecutive) {
+    coneGrad.addColorStop(0, '#ca8a04');
+    coneGrad.addColorStop(0.32, '#fef08a');
+    coneGrad.addColorStop(0.62, '#eab308');
+    coneGrad.addColorStop(1, '#854d0e');
+  } else {
+    coneGrad.addColorStop(0, '#787e86');
+    coneGrad.addColorStop(0.32, '#f8f9fa');
+    coneGrad.addColorStop(0.62, '#b8bdc4');
+    coneGrad.addColorStop(1, '#5c6168');
+  }
   ctx.fillStyle = coneGrad;
   ctx.beginPath();
   ctx.moveTo(coneStart, -h * 0.8);
-  ctx.lineTo(tip - 2.2, -1.4);
-  ctx.lineTo(tip - 2.2, 1.4);
+  ctx.lineTo(tip - (isPinPoint ? 3.5 : 2.2), -1.2);
+  ctx.lineTo(tip - (isPinPoint ? 3.5 : 2.2), 1.2);
   ctx.lineTo(coneStart, h * 0.8);
   ctx.closePath();
   ctx.fill();
 
-  // Ballpoint sphere
-  ctx.fillStyle = '#2d3034';
-  ctx.beginPath();
-  ctx.arc(tip - 1.7, 0, 1.6, 0, Math.PI * 2);
-  ctx.fill();
+  // Needle tip sphere (0.5mm tungsten point for Pin-Point)
+  if (isPinPoint) {
+    // Needle neck
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(tip - 3.5, -0.8, 2.2, 1.6);
+    // Tungsten ball
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.arc(tip - 1.3, 0, 1.3, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Standard ballpoint tip
+    ctx.fillStyle = '#2d3034';
+    ctx.beginPath();
+    ctx.arc(tip - 1.7, 0, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // 7. Back Plug
   const plugGrad = ctx.createLinearGradient(0, -h, 0, h);
@@ -305,12 +452,12 @@ export function drawDetailedPen(
   plugGrad.addColorStop(0.3, shadeColor(skin.cap, 0.3));
   plugGrad.addColorStop(1, shadeColor(skin.cap, -0.45));
   ctx.fillStyle = plugGrad;
-  drawRoundedRect(ctx, back, -h - 0.5, 13, PEN_WIDTH + 1, 4.5);
+  drawRoundedRect(ctx, back, -h - 0.5, 13, penWidth + 1, 4.5);
   ctx.fill();
 
   // 8. Pocket Clip
   const clipStart = back + 5;
-  const clipEnd = back + 64;
+  const clipEnd = back + (isPinPoint ? 68 : 64);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
   drawRoundedRect(ctx, clipStart + 1, -1.4, clipEnd - clipStart, 5.2, 2.6);
   ctx.fill();

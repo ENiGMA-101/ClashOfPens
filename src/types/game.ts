@@ -12,16 +12,58 @@ export interface AttackSide {
   desc: string;
 }
 
-export type PenPattern = 'none' | 'stripes' | 'rain' | 'bolt' | 'petals' | 'chevron' | 'weave' | 'stars' | 'gold' | 'neon' | 'dots';
+export type PenPattern =
+  | 'none'
+  | 'pinpoint_strip'
+  | 'alltime_ribs'
+  | 'iteen_grooves'
+  | 'rio_carnival'
+  | 'hischool_band'
+  | 'crystal_facets'
+  | 'envoy_gold'
+  | 'radiant_glow'
+  | 'woodmark_grain'
+  | 'orbit_rings'
+  | 'smoothy_wave'
+  | 'stripes'
+  | 'rain'
+  | 'bolt'
+  | 'petals'
+  | 'chevron'
+  | 'weave'
+  | 'stars'
+  | 'gold'
+  | 'neon'
+  | 'thunder'
+  | 'flame'
+  | 'frost'
+  | 'dragon'
+  | 'dots';
+
 export type PenRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+export type PenGroup = 'basic' | 'matador' | 'special';
+
+export type PenModelGeometry =
+  | 'pinpoint'
+  | 'alltime'
+  | 'iteen'
+  | 'hischool'
+  | 'crystal'
+  | 'executive'
+  | 'ergonomic'
+  | 'classic'
+  | 'fantasy';
 
 export interface PenSkin {
   id: string;
   name: string;
   banglaName?: string;
-  group: 'classic' | 'hero' | 'legendary';
+  group: PenGroup;
   rarity: PenRarity;
   price: number;
+  isAuthentic: boolean;
+  modelGeometry: PenModelGeometry;
   translucent?: boolean;
   body: string;
   cap: string;
@@ -33,6 +75,9 @@ export interface PenSkin {
   emblem?: boolean;
   glow?: string;
   lore: string;
+  tipSize?: string;
+  inkType?: string;
+  colors?: string[]; // available ink/barrel color variations
 }
 
 export type SurfacePreset = 'polished' | 'normal' | 'rough';
@@ -71,11 +116,32 @@ export interface GameSettings {
   dragFlickGesture: boolean;
 }
 
+export interface BotPersonality {
+  id: string;
+  name: string;
+  banglaName: string;
+  avatar: string;
+  title: string;
+  bio: string;
+  skill: BotSkill;
+  defaultSkinId: string;
+  quips: {
+    intro: string;
+    flick: string;
+    nearMiss: string;
+    hit: string;
+    knockout: string;
+    victory: string;
+    defeat: string;
+  };
+}
+
 export interface PlayerConfig {
   id: string;
   name: string;
   skinId: string;
   isBot: boolean;
+  botPersonalityId?: string;
   color?: string;
 }
 
@@ -84,6 +150,7 @@ export interface InGamePlayer {
   name: string;
   skin: PenSkin;
   isBot: boolean;
+  botPersonality?: BotPersonality;
   idx: number;
   body: any; // Matter.Body
   alive: boolean;
@@ -91,6 +158,8 @@ export interface InGamePlayer {
   lastSide: AttackSideIndex;
   flickCount: number;
   knockouts: number;
+  speech?: string;
+  speechTime?: number;
 }
 
 export type GamePhase = 'aim' | 'launch' | 'moving' | 'settling' | 'over';
@@ -113,7 +182,7 @@ export interface ChallengeItem {
 }
 
 export interface TournamentMatch {
-  round: number; // 1: Quarter-Final, 2: Semi-Final, 3: Grand Final
+  round: number;
   roundName: string;
   opponent: {
     name: string;
@@ -121,6 +190,7 @@ export interface TournamentMatch {
     skill: BotSkill;
     avatar: string;
     title: string;
+    botPersonalityId?: string;
   };
   won: boolean;
   completed: boolean;

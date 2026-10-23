@@ -39,6 +39,7 @@ import {
   TrajectoryResult,
 } from './game/physics';
 import { planBotShot } from './game/bot';
+import { getBotPersonality } from './game/bots';
 import { Sound } from './game/audio';
 import {
   calculateLevel,
@@ -315,6 +316,10 @@ export default function App() {
 
       if (player.isBot) {
         showBanner(`${player.name}’s Turn`, 'Calculating angle and power...');
+        if (player.botPersonality && Math.random() < 0.5) {
+          player.speech = player.botPersonality.quips.flick;
+          player.speechTime = performance.now();
+        }
         // Schedule bot planning
         const currentMatchId = G.matchId;
         setTimeout(() => {
@@ -352,6 +357,11 @@ export default function App() {
     p.lastPower = power;
     p.lastSide = side;
     p.flickCount++;
+
+    if (p.isBot && p.botPersonality) {
+      p.speech = p.botPersonality.quips.flick;
+      p.speechTime = performance.now();
+    }
 
     setPhase('launch');
     G.launchTime = performance.now();
@@ -417,6 +427,14 @@ export default function App() {
       // Attribute knockout to attacker
       if (G.attacker && G.attacker.id !== p.id) {
         G.attacker.knockouts++;
+        if (G.attacker.botPersonality) {
+          G.attacker.speech = G.attacker.botPersonality.quips.knockout;
+          G.attacker.speechTime = performance.now();
+        }
+      }
+      if (p.botPersonality) {
+        p.speech = p.botPersonality.quips.defeat;
+        p.speechTime = performance.now();
       }
     },
     [settings.reducedMotion]
@@ -582,6 +600,20 @@ export default function App() {
               G.shake = Math.max(G.shake, Math.min(6, rel * 0.3));
             }
           }
+
+          if (rel > 1.2) {
+            const playerA = G.players.find((p) => p.body === a);
+            const playerB = G.players.find((p) => p.body === b);
+            const botCandidate = [playerA, playerB].find((p) => p && p.isBot && p.botPersonality);
+            if (
+              botCandidate &&
+              botCandidate.botPersonality &&
+              (!botCandidate.speechTime || now - botCandidate.speechTime > 3200)
+            ) {
+              botCandidate.speech = botCandidate.botPersonality.quips.hit;
+              botCandidate.speechTime = now;
+            }
+          }
         }
       });
 
@@ -603,11 +635,19 @@ export default function App() {
         body.deltaTime = SUB_DT;
         Composite.add(G.engine!.world, body);
 
+        const botPersonality = cfg.isBot
+          ? getBotPersonality(
+              cfg.botPersonalityId ||
+                (cfg.id.startsWith('bot_') ? cfg.id.replace('bot_', '') : undefined)
+            )
+          : undefined;
+
         return {
           id: cfg.id,
           name: cfg.name,
           skin,
           isBot: cfg.isBot,
+          botPersonality,
           idx: i,
           body,
           alive: true,
@@ -615,6 +655,8 @@ export default function App() {
           lastSide: 1,
           flickCount: 0,
           knockouts: 0,
+          speech: botPersonality ? botPersonality.quips.intro : undefined,
+          speechTime: botPersonality ? performance.now() : undefined,
         };
       });
 
@@ -653,6 +695,9 @@ export default function App() {
     setActiveTournamentMatch(round);
     setActiveChallenge(null);
 
+    const botId =
+      round.round === 1 ? 'backbench_boss' : round.round === 2 ? 'class_captain' : 'matador_master';
+
     const configs: PlayerConfig[] = [
       {
         id: 'player_hero',
@@ -665,6 +710,7 @@ export default function App() {
         name: round.opponent.name,
         skinId: round.opponent.skinId,
         isBot: true,
+        botPersonalityId: botId,
       },
     ];
 
@@ -686,7 +732,7 @@ export default function App() {
       {
         id: 'dummy_target',
         name: 'Practice Dummy',
-        skinId: 'black',
+        skinId: 'matador_alltime',
         isBot: true,
       },
     ];
@@ -696,6 +742,7 @@ export default function App() {
 
   // Start Quick Match
   const startDefaultQuickMatch = () => {
+    const defaultBot = getBotPersonality('backbench_boss');
     const configs: PlayerConfig[] = [
       {
         id: 'p1',
@@ -704,10 +751,11 @@ export default function App() {
         isBot: false,
       },
       {
-        id: 'p2',
-        name: 'Bot Tutul',
-        skinId: 'black',
+        id: 'bot_backbench_boss',
+        name: defaultBot.name,
+        skinId: defaultBot.defaultSkinId,
         isBot: true,
+        botPersonalityId: defaultBot.id,
       },
     ];
     startMatch(configs, 'quick');
@@ -1332,8 +1380,14 @@ export default function App() {
               name: p.name,
               skinId: p.skin.id,
               isBot: p.isBot,
+              botPersonalityId: p.botPersonality?.id,
             }));
             startMatch(configs, gameMode);
+          }}
+          onChangeOpponent={() => {
+            setIsPlaying(false);
+            setSetupMode('ai_battle');
+            setActiveModal('setup');
           }}
           onExit={() => {
             setActiveModal('none');

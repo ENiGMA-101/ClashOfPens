@@ -1,5 +1,5 @@
 import React from 'react';
-import { RotateCcw, Home, Sparkles, AlertCircle } from 'lucide-react';
+import { RotateCcw, Home, Sparkles, MessageCircle } from 'lucide-react';
 import { AttackSideIndex, GamePhase, InGamePlayer } from '../types/game';
 import { ATTACK_SIDES } from '../game/constants';
 import { Sound } from '../game/audio';
@@ -39,6 +39,11 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   const isMoving = phase === 'moving' || phase === 'launch';
   const currentSideInfo = ATTACK_SIDES[side];
 
+  // Check if any bot or player has an active speech bubble
+  const speakingPlayer = players.find(
+    (p) => p.speech && p.speechTime && performance.now() - p.speechTime < 3200
+  );
+
   return (
     <>
       {/* Top HUD Bar */}
@@ -58,12 +63,18 @@ export const GameHUD: React.FC<GameHUDProps> = ({
                     : 'bg-[#18110b]/80 text-gray-300 border border-[#3d2414]'
                 }`}
               >
-                <span
-                  className="w-3.5 h-3.5 rounded-full shadow-inner flex-shrink-0"
-                  style={{ backgroundColor: p.skin.ui }}
-                />
-                <span className="truncate max-w-[80px]">{p.name}</span>
-                {p.isBot && <span className="text-[10px] text-gray-400 font-normal">bot</span>}
+                {p.botPersonality?.avatar ? (
+                  <span className="text-sm">{p.botPersonality.avatar}</span>
+                ) : (
+                  <span
+                    className="w-3.5 h-3.5 rounded-full shadow-inner flex-shrink-0"
+                    style={{ backgroundColor: p.skin.ui }}
+                  />
+                )}
+                <span className="truncate max-w-[90px]">{p.name}</span>
+                <span className="text-[10px] text-amber-300/80 font-normal truncate max-w-[80px]">
+                  ({p.skin.name})
+                </span>
                 {!p.alive && <span className="text-[10px] text-red-400 font-normal">out</span>}
               </div>
             );
@@ -102,7 +113,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         </div>
       </div>
 
-      {/* Floating Center Banner */}
+      {/* Center Dynamic Turn Banner */}
       {bannerMessage && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-25 pointer-events-none animate-bounce-subtle text-center">
           <div className="px-6 py-2.5 bg-[#1a0e06]/90 border-2 border-[#f5c518] rounded-2xl shadow-2xl backdrop-blur-md">
@@ -114,6 +125,25 @@ export const GameHUD: React.FC<GameHUDProps> = ({
                 {bannerMessage.sub}
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bot Contextual Speech Bubble */}
+      {speakingPlayer && speakingPlayer.speech && (
+        <div className="fixed top-36 left-1/2 -translate-x-1/2 z-25 pointer-events-none animate-fade-in text-center max-w-xs sm:max-w-md">
+          <div className="px-4 py-2 bg-[#29170c]/95 border-2 border-[#d4af37] rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-2 text-left">
+            <span className="text-2xl flex-shrink-0">
+              {speakingPlayer.botPersonality?.avatar || '💬'}
+            </span>
+            <div>
+              <span className="text-[11px] font-bold text-[#f5c518] block leading-tight">
+                {speakingPlayer.name}:
+              </span>
+              <p className="text-xs text-white italic font-medium leading-tight">
+                "{speakingPlayer.speech}"
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -165,10 +195,10 @@ export const GameHUD: React.FC<GameHUDProps> = ({
                     />
                   </svg>
                   <span className="font-kalam font-bold text-xs leading-none">
-                    {idx === 0 ? 'Top' : idx === 1 ? 'Middle' : 'Bottom'}
+                    {idx === 0 ? 'Top Strike' : idx === 1 ? 'Middle Push' : 'Bottom Slam'}
                   </span>
                   <span className="text-[9px] text-gray-400 font-sans">
-                    {idx === 0 ? 'Side 1' : idx === 1 ? 'Side 2' : 'Side 3'}
+                    {idx === 0 ? 'Side 1 (Spin)' : idx === 1 ? 'Side 2 (Direct)' : 'Side 3 (Heavy)'}
                   </span>
                 </button>
               );
@@ -202,21 +232,27 @@ export const GameHUD: React.FC<GameHUDProps> = ({
               onClick={() => {
                 onFlick();
               }}
-              className={`min-w-[110px] py-3.5 px-4 rounded-xl font-kalam font-black text-xl flex items-center justify-center gap-1.5 shadow-lg transition-all ${
+              className={`min-w-[120px] py-3.5 px-4 rounded-xl font-kalam font-black text-xl flex items-center justify-center gap-1.5 shadow-lg transition-all ${
                 isHumanTurn
                   ? 'bg-gradient-to-r from-[#d4af37] via-[#f5d061] to-[#d4af37] text-black hover:brightness-110 active:scale-95 shadow-[#d4af37]/30'
                   : 'bg-[#2a1b12] text-gray-500 border border-[#422919] cursor-not-allowed'
               }`}
             >
               <Sparkles className="w-5 h-5 fill-current" />
-              <span>{isMoving ? 'Sliding…' : currentPlayer?.isBot ? 'Bot Turn' : 'FLICK!'}</span>
+              <span>
+                {isMoving
+                  ? 'Sliding…'
+                  : currentPlayer?.isBot
+                  ? `${currentPlayer.botPersonality?.avatar || '🤖'} Thinking…`
+                  : 'FLICK!'}
+              </span>
             </button>
           </div>
 
           {/* Bottom Hint */}
           <div className="flex items-center justify-between text-[11px] text-[#a89584] leading-tight px-1">
             <span className="truncate">
-              <b className="text-[#f5d061]">{currentSideInfo.name}:</b> {currentSideInfo.desc}
+              <b className="text-[#f5c518]">{currentSideInfo.name}:</b> {currentSideInfo.desc}
             </span>
             <span className="hidden sm:inline-block text-[10px] text-gray-400 pl-2 flex-shrink-0">
               Drag on desk to aim

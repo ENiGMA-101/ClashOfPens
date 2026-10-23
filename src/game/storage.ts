@@ -1,20 +1,22 @@
 import { GameSettings, PlayerProgress } from '../types/game';
 import { DEFAULT_SETTINGS } from './constants';
+import { DEFAULT_PEN_ID } from './skins';
 
-const SAVE_KEY = 'penfight.v2.save';
-const SETTINGS_KEY = 'penfight.v2.settings';
+const SAVE_KEY = 'penfight.v3.save';
+const LEGACY_V2_KEY = 'penfight.v2.save';
+const SETTINGS_KEY = 'penfight.v3.settings';
 
 export const INITIAL_PROGRESS: PlayerProgress = {
-  version: 2,
+  version: 3,
   level: 1,
   xp: 0,
-  coins: 200, // Starter coins
+  coins: 250, // Starter coins
   matchesPlayed: 0,
   matchesWon: 0,
   knockoutsCount: 0,
   trickShotsCount: 0,
-  unlockedSkins: ['blue', 'black'],
-  equippedSkin: 'blue',
+  unlockedSkins: ['matador_pinpoint', 'matador_alltime'],
+  equippedSkin: DEFAULT_PEN_ID, // Strictly Matador Pin-Point
   equippedArena: 'classic',
   completedChallenges: [],
   championshipTrophies: 0,
@@ -24,17 +26,30 @@ export const INITIAL_PROGRESS: PlayerProgress = {
 
 export function loadProgress(): PlayerProgress {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    let raw = localStorage.getItem(SAVE_KEY);
     if (!raw) {
-      // Check legacy v1 save
-      const legacy = localStorage.getItem('penfight.setup');
-      if (legacy) {
-        return { ...INITIAL_PROGRESS, coins: 300 };
-      }
+      raw = localStorage.getItem(LEGACY_V2_KEY);
+    }
+    if (!raw) {
       return { ...INITIAL_PROGRESS };
     }
     const parsed = JSON.parse(raw);
-    return { ...INITIAL_PROGRESS, ...parsed };
+    const progress: PlayerProgress = { ...INITIAL_PROGRESS, ...parsed };
+
+    // Migration logic to ensure Matador Pin-Point and Matador All-Time are present
+    if (!progress.unlockedSkins.includes('matador_pinpoint')) {
+      progress.unlockedSkins.push('matador_pinpoint');
+    }
+    if (!progress.unlockedSkins.includes('matador_alltime')) {
+      progress.unlockedSkins.push('matador_alltime');
+    }
+
+    // If equipped skin was the old generic 'blue' or invalid, set to Matador Pin-Point
+    if (progress.equippedSkin === 'blue' || !progress.equippedSkin) {
+      progress.equippedSkin = 'matador_pinpoint';
+    }
+
+    return progress;
   } catch {
     return { ...INITIAL_PROGRESS };
   }
