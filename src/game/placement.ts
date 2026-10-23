@@ -13,9 +13,9 @@ export interface PlacementValidationResult {
   reason?: string;
 }
 
-export const SAFE_BOUNDARY_MARGIN = 14;
-export const MIN_STARTING_DISTANCE = 65;
-export const PEN_OVERLAP_DISTANCE = 16;
+export const SAFE_BOUNDARY_MARGIN = 20;
+export const MIN_STARTING_DISTANCE = 70;
+export const PEN_OVERLAP_DISTANCE = 18;
 
 /**
  * Calculates the 4 corner points of a rotated pen bounding box.
@@ -124,7 +124,7 @@ export function getSuggestedPlacement(
     a: 0,
   };
 
-  // Add subtle organic jitter so every match has a distinct, fresh starting suggestion
+  // Add subtle organic variation so every match has a fresh starting suggestion
   const jitterX = (rng() - 0.5) * 36;
   const jitterY = (rng() - 0.5) * 36;
   const jitterA = (rng() - 0.5) * 0.35;
@@ -164,16 +164,41 @@ export function generateRandomBotPlacement(
   const maxY = Math.max(minY + 1, deskHeight - hl);
 
   const minDesiredDistance = Math.max(
-    MIN_STARTING_DISTANCE + 30,
-    Math.min(deskWidth, deskHeight) * 0.28
+    MIN_STARTING_DISTANCE + 40,
+    Math.min(deskWidth, deskHeight) * 0.32
   );
+
+  // If a single human placement exists, prefer placing the bot in the opposing half of the desk
+  const human = existingPlacements.length === 1 ? existingPlacements[0] : null;
+  const humanOnLeft = human ? human.x < deskWidth / 2 : false;
 
   // Retries with progressive relaxation
   const maxAttempts = 150;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const x = minX + rng() * (maxX - minX);
-    const y = minY + rng() * (maxY - minY);
-    const angle = rng() * Math.PI * 2;
+    let x: number;
+    let y: number;
+
+    if (human && attempt < 80) {
+      // Symmetrically balance across the School Bench long axis
+      if (humanOnLeft) {
+        x = deskWidth * 0.55 + rng() * (maxX - deskWidth * 0.55);
+      } else {
+        x = minX + rng() * (deskWidth * 0.45 - minX);
+      }
+      y = minY + rng() * (maxY - minY);
+    } else {
+      x = minX + rng() * (maxX - minX);
+      y = minY + rng() * (maxY - minY);
+    }
+
+    // Natural orientation: point generally towards center / opponent with controlled variance
+    let angle: number;
+    if (human) {
+      const angleToOpponent = Math.atan2(human.y - y, human.x - x);
+      angle = angleToOpponent + (rng() - 0.5) * 1.2;
+    } else {
+      angle = rng() * Math.PI * 2;
+    }
 
     const candidate: PenPlacement = { x, y, angle };
 
@@ -202,9 +227,9 @@ export function generateRandomBotPlacement(
   // Safe Fallback: Derive from standard table spawn coordinates
   const fallbackSpawns = getTableSpawnPositions(deskWidth, deskHeight, totalPlayers, isPortrait);
   const fallback = fallbackSpawns[botIndex % fallbackSpawns.length] || {
-    x: deskWidth * 0.7,
+    x: deskWidth * 0.78,
     y: deskHeight * 0.5,
-    a: Math.PI / 2,
+    a: -Math.PI / 2,
   };
 
   const fallbackCandidate: PenPlacement = {

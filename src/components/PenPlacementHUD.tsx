@@ -121,7 +121,7 @@ export const PenPlacementHUD: React.FC<PenPlacementHUDProps> = ({
       data-testid="placement-hud"
     >
       {/* Top Banner & Instructions */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-4xl mx-auto w-full pointer-events-auto">
+      <div data-testid="hud-top-panel" className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-4xl mx-auto w-full pointer-events-auto">
         {/* Player Status Card */}
         <div className="flex items-center gap-3 bg-[#1c120a]/90 backdrop-blur-md border border-[#5a361c] px-4 py-2.5 rounded-2xl shadow-xl">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d4af37] to-[#78350f] p-0.5 shadow">
@@ -169,7 +169,7 @@ export const PenPlacementHUD: React.FC<PenPlacementHUDProps> = ({
       </div>
 
       {/* Bottom Floating Control Panel */}
-      <div className="max-w-2xl mx-auto w-full pointer-events-auto flex flex-col gap-2.5 mb-1 sm:mb-2">
+      <div data-testid="hud-bottom-panel" className="max-w-2xl mx-auto w-full pointer-events-auto flex flex-col gap-2 mb-1 sm:mb-2">
         {/* Validation Feedback Banner */}
         <div className="flex justify-center">
           {!isValid ? (

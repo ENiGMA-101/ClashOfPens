@@ -157,9 +157,9 @@ export default function App() {
   // Table Configuration & Dimensions
   const [selectedTableId, setSelectedTableId] = useState<string>(() => {
     try {
-      return localStorage.getItem('clashofpens_table_id') || 'large_rectangle';
+      return localStorage.getItem('clashofpens_table_id') || 'school_bench';
     } catch {
-      return 'large_rectangle';
+      return 'school_bench';
     }
   });
   const [customDims, setCustomDims] = useState<{ width: number; height: number }>(() => {
@@ -330,7 +330,7 @@ export default function App() {
     return out;
   };
 
-  // Layout calculation
+  // Layout calculation ensuring full table visibility without overlapping top/bottom HUD
   const updateLayout = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -345,23 +345,71 @@ export default function App() {
     G.deskWidth = dims.width;
     G.deskHeight = dims.height;
 
-    const topPad = isPlaying ? 70 : 0;
-    const botPad = isPlaying ? 170 : 0;
-    const availH = Math.max(120, h - topPad - botPad);
+    // Dynamically measure actual HUD heights from DOM if rendered, with responsive fallbacks
+    let topPad = 0;
+    let botPad = 0;
 
-    const scale = Math.min(w / (G.deskWidth + 2 * DESK_MARGIN), availH / (G.deskHeight + 2 * DESK_MARGIN));
+    if (isPlaying) {
+      const topEl = document.querySelector('[data-testid="hud-top-panel"]');
+      const botEl = document.querySelector('[data-testid="hud-bottom-panel"]');
+
+      if (topEl) {
+        topPad = topEl.getBoundingClientRect().height;
+      } else {
+        topPad = w < 640 ? 100 : 75;
+      }
+
+      if (botEl) {
+        botPad = botEl.getBoundingClientRect().height;
+      } else {
+        const isPlacing = phase === 'placing' || phase === 'handover';
+        if (w < 640) {
+          botPad = isPlacing ? 165 : 240;
+        } else {
+          botPad = isPlacing ? 135 : 210;
+        }
+      }
+    }
+
+    // Margins ensuring all 4 corners and borders stay visible with breathing room
+    const horizontalMargin = Math.max(16, Math.min(36, w * 0.03));
+    const verticalMargin = 16;
+
+    const availW = Math.max(80, w - 2 * horizontalMargin);
+    const availH = Math.max(80, h - topPad - botPad - 2 * verticalMargin);
+
+    const scale = Math.min(availW / G.deskWidth, availH / G.deskHeight);
     G.view = {
       scale,
       ox: (w - G.deskWidth * scale) / 2,
-      oy: topPad + (availH - G.deskHeight * scale) / 2,
+      oy: topPad + verticalMargin + (availH - G.deskHeight * scale) / 2,
     };
-  }, [isPlaying, selectedTableId, customDims]);
+  }, [isPlaying, phase, selectedTableId, customDims]);
 
   useEffect(() => {
     updateLayout();
     window.addEventListener('resize', updateLayout);
-    return () => window.removeEventListener('resize', updateLayout);
-  }, [updateLayout]);
+    window.addEventListener('orientationchange', updateLayout);
+
+    // Observe canvas container resizing for seamless layout adjustments
+    const container = canvasRef.current?.parentElement;
+    let ro: ResizeObserver | null = null;
+    if (container && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => {
+        updateLayout();
+      });
+      ro.observe(container);
+    }
+
+    const timer = setTimeout(updateLayout, 60);
+
+    return () => {
+      window.removeEventListener('resize', updateLayout);
+      window.removeEventListener('orientationchange', updateLayout);
+      if (ro) ro.disconnect();
+      clearTimeout(timer);
+    };
+  }, [updateLayout, isPlaying, phase]);
 
   // Aim towards nearest opponent pen
   const getAngleToNearestOpponent = (playerIdx: number) => {
@@ -898,9 +946,13 @@ export default function App() {
         beginTurn(0);
       } else {
         // Pen Placement Phase for AI Battle, Friendly Matches, and Quick matches
-        const initialBots: Record<number, PenPlacement> = {};
-        configs.forEach((cfg, idx) => {
-          if (cfg.isBot) {
+        // In AI battle, the bot is not generated yet. The bot is randomized only AFTER human placement confirms!
+        setBotPlacements({});
+
+        const firstHumanIdx = configs.findIndex((c) => !c.isBot);
+        if (firstHumanIdx === -1) {
+          const initialBots: Record<number, PenPlacement> = {};
+          configs.forEach((cfg, idx) => {
             const existing = Object.values(initialBots);
             const botPos = generateRandomBotPlacement(
               existing,
@@ -911,12 +963,7 @@ export default function App() {
               configs.length
             );
             initialBots[idx] = botPos;
-          }
-        });
-        setBotPlacements(initialBots);
-
-        const firstHumanIdx = configs.findIndex((c) => !c.isBot);
-        if (firstHumanIdx === -1) {
+          });
           finalizeMatchAfterPlacement(configs, {}, initialBots);
           return;
         }
@@ -974,11 +1021,35 @@ export default function App() {
       );
       setDraftPlacement(nextDraft);
     } else {
-      // All human players placed! Finalize match and start
-      finalizeMatchAfterPlacement(placementConfigs, nextConfirmed, botPlacements);
+      // All human players placed!
+      // In AI Battle and matches with bots, generate randomized bot placements now:
+      // - within table boundaries
+      // - safe distance from human placement
+      // - safe distance from edges and other bots
+      const finalBots: Record<number, PenPlacement> = {};
+      const confirmedHumanPositions = Object.values(nextConfirmed);
+      const allObstacles: PenPlacement[] = [...confirmedHumanPositions];
+
+      placementConfigs.forEach((cfg, idx) => {
+        if (cfg.isBot) {
+          const botPos = generateRandomBotPlacement(
+            allObstacles,
+            gameRef.current.deskWidth,
+            gameRef.current.deskHeight,
+            Math.random,
+            idx,
+            placementConfigs.length
+          );
+          finalBots[idx] = botPos;
+          allObstacles.push(botPos);
+        }
+      });
+      setBotPlacements(finalBots);
+
+      // Finalize match and start
+      finalizeMatchAfterPlacement(placementConfigs, nextConfirmed, finalBots);
     }
   }, [
-    botPlacements,
     confirmedPlacements,
     draftPlacement,
     finalizeMatchAfterPlacement,

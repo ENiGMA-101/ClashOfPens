@@ -725,6 +725,31 @@ export function generateDeskCanvas(
   ctx.fillStyle = edgeGrad;
   ctx.fillRect(0, th - bevel, tw, bevel);
 
+  // Engraved classroom ruler markings along the top rim (classic school bench detail)
+  if (tw > 850) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 230, 185, 0.22)';
+    ctx.fillStyle = 'rgba(255, 230, 185, 0.25)';
+    ctx.font = "8px 'Courier New', monospace";
+    ctx.textAlign = 'center';
+    const startX = 80;
+    const endX = tw - 80;
+    for (let rx = startX; rx <= endX; rx += 12) {
+      const isMajor = (rx - startX) % 60 === 0;
+      const tickH = isMajor ? 9 : 4.5;
+      ctx.lineWidth = isMajor ? 1.0 : 0.6;
+      ctx.beginPath();
+      ctx.moveTo(rx, 6);
+      ctx.lineTo(rx, 6 + tickH);
+      ctx.stroke();
+      if (isMajor && rx < endX - 20) {
+        const mark = Math.round((rx - startX) / 60);
+        ctx.fillText(`${mark}`, rx, 22);
+      }
+    }
+    ctx.restore();
+  }
+
   // Outer border rim
   ctx.strokeStyle = arena.theme.rimColor;
   ctx.lineWidth = 3.5;

@@ -25,21 +25,21 @@ export interface TableConfig {
 
 export const TABLE_PRESETS: TableConfig[] = [
   {
-    id: 'large_rectangle',
-    name: 'Large Rectangle Table (Default)',
-    banglaName: 'বৃহৎ আয়তাকার টেবিল',
+    id: 'school_bench',
+    name: 'School Bench',
+    banglaName: 'স্কুল বেঞ্চ',
     shape: 'rectangle',
-    baseWidth: 1040,
-    baseHeight: 640,
+    baseWidth: 1200,
+    baseHeight: 650,
     surface: 'normal',
-    frictionAir: 0.048,
-    desc: 'The quintessential spacious classroom desk. Long runway for high-velocity bank shots and multi-pen collisions.',
+    frictionAir: 0.046,
+    desc: 'The classic Bangladeshi classroom wooden school bench. Long rectangular wooden tabletop with natural horizontal grain, engraved ruler markings, and authentic pen-fighting runway.',
     theme: {
-      baseHue: 27,
-      baseSat: 48,
-      baseLight: 32,
-      rimColor: 'rgba(25,12,4,0.92)',
-      scratchColor: 'rgba(255,225,185,0.09)',
+      baseHue: 28,
+      baseSat: 46,
+      baseLight: 30,
+      rimColor: 'rgba(28,14,5,0.96)',
+      scratchColor: 'rgba(255,220,175,0.12)',
       chalkDoodles: true,
       inkStains: true,
     },
@@ -70,7 +70,7 @@ export const TABLE_PRESETS: TableConfig[] = [
     name: 'Small Practice Table',
     banglaName: 'ছোট প্র্যাকটিস টেবিল',
     shape: 'compact',
-    baseWidth: 620,
+    baseWidth: 720,
     baseHeight: 520,
     surface: 'rough',
     frictionAir: 0.062,
@@ -90,8 +90,8 @@ export const TABLE_PRESETS: TableConfig[] = [
     name: 'Championship Table',
     banglaName: 'গ্র্যান্ড চ্যাম্পিয়নশিপ টেবিল',
     shape: 'tournament',
-    baseWidth: 1160,
-    baseHeight: 720,
+    baseWidth: 1260,
+    baseHeight: 680,
     surface: 'polished',
     frictionAir: 0.038,
     desc: 'Lacquered mahogany tournament arena with gold-inlaid borders and tournament-grade slickness.',
@@ -111,8 +111,8 @@ export const TABLE_PRESETS: TableConfig[] = [
     name: 'Custom Dimensions Desk',
     banglaName: 'কাস্টম সাইজ টেবিল',
     shape: 'custom',
-    baseWidth: 900,
-    baseHeight: 600,
+    baseWidth: 1000,
+    baseHeight: 620,
     surface: 'normal',
     frictionAir: 0.048,
     isCustom: true,
@@ -132,10 +132,11 @@ export const TABLE_PRESETS: TableConfig[] = [
 export const TABLES_BY_ID = Object.fromEntries(TABLE_PRESETS.map((t) => [t.id, t]));
 
 export function getTableConfig(id: string, customDims?: { width: number; height: number; friction?: number }): TableConfig {
-  const table = TABLES_BY_ID[id] || TABLE_PRESETS[0];
-  if (id === 'custom_table' && customDims) {
-    const safeW = Math.max(500, Math.min(1250, Math.round(customDims.width)));
-    const safeH = Math.max(500, Math.min(1250, Math.round(customDims.height)));
+  const normalizedId = id === 'large_rectangle' ? 'school_bench' : id;
+  const table = TABLES_BY_ID[normalizedId] || TABLE_PRESETS[0];
+  if (normalizedId === 'custom_table' && customDims) {
+    const safeW = Math.max(500, Math.min(1350, Math.round(customDims.width)));
+    const safeH = Math.max(450, Math.min(1000, Math.round(customDims.height)));
     return {
       ...table,
       baseWidth: safeW,
@@ -147,29 +148,21 @@ export function getTableConfig(id: string, customDims?: { width: number; height:
 }
 
 /**
- * Calculates responsive table dimensions for portrait or landscape orientations.
- * Square tables stay square in both orientations.
+ * Calculates responsive table dimensions.
+ * The School Bench and rectangular tables maintain their authentic rectangular aspect ratio.
+ * The camera fits the table cleanly into the available viewport without stretching or distorting.
  */
 export function resolveTableDimensions(
   table: TableConfig,
-  isPortrait: boolean
+  _isPortrait?: boolean
 ): { width: number; height: number } {
   if (table.shape === 'square') {
     const side = Math.min(table.baseWidth, table.baseHeight);
     return { width: side, height: side };
   }
 
-  if (isPortrait) {
-    // In portrait, the table should be taller than wide
-    const w = Math.min(table.baseWidth, table.baseHeight);
-    const h = Math.max(table.baseWidth, table.baseHeight);
-    return { width: w, height: h };
-  } else {
-    // In landscape, the table should be wider than tall
-    const w = Math.max(table.baseWidth, table.baseHeight);
-    const h = Math.min(table.baseWidth, table.baseHeight);
-    return { width: w, height: h };
-  }
+  // Preserve the authentic landscape rectangular aspect ratio across all devices
+  return { width: table.baseWidth, height: table.baseHeight };
 }
 
 /**
@@ -179,32 +172,26 @@ export function getTableSpawnPositions(
   tableWidth: number,
   tableHeight: number,
   playerCount: number,
-  isPortrait: boolean
+  _isPortrait?: boolean
 ): Array<{ x: number; y: number; a: number }> {
   const cx = tableWidth / 2;
   const cy = tableHeight / 2;
 
   if (playerCount === 2) {
-    if (isPortrait) {
-      return [
-        { x: cx, y: tableHeight * 0.28, a: 0.1 },
-        { x: cx, y: tableHeight * 0.72, a: -0.1 },
-      ];
-    } else {
-      return [
-        { x: tableWidth * 0.28, y: cy, a: Math.PI / 2 + 0.1 },
-        { x: tableWidth * 0.72, y: cy, a: Math.PI / 2 - 0.1 },
-      ];
-    }
+    // Symmetrical positioning across the long School Bench runway
+    return [
+      { x: tableWidth * 0.22, y: cy, a: Math.PI / 2 },
+      { x: tableWidth * 0.78, y: cy, a: -Math.PI / 2 },
+    ];
   }
 
   // 3 or more players: Symmetrical triangular distribution around table center
-  const radius = Math.min(tableWidth, tableHeight) * 0.32;
+  const radius = Math.min(tableWidth, tableHeight) * 0.30;
   const out = [];
-  const offset = isPortrait ? 0 : Math.PI / 6;
+  const offset = -Math.PI / 2;
 
   for (let i = 0; i < playerCount; i++) {
-    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / playerCount + offset;
+    const angle = offset + (i * 2 * Math.PI) / playerCount;
     out.push({
       x: cx + radius * Math.cos(angle),
       y: cy + radius * Math.sin(angle),

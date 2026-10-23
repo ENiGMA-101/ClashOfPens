@@ -52,7 +52,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   return (
     <>
       {/* Top HUD Bar */}
-      <div className="fixed top-12 left-0 right-0 z-20 px-3 py-2 flex items-start justify-between pointer-events-none">
+      <div data-testid="hud-top-panel" className="fixed top-12 left-0 right-0 z-20 px-3 py-2 flex items-start justify-between pointer-events-none">
         {/* Player Status Chips */}
         <div className="flex flex-wrap items-center gap-2 pointer-events-auto max-w-[70%]">
           {players.map((p, idx) => {
@@ -161,8 +161,8 @@ export const GameHUD: React.FC<GameHUDProps> = ({
       )}
 
       {/* Bottom Interactive HUD Control Panel */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 flex justify-center px-2 pb-3 pointer-events-none">
-        <div className="pointer-events-auto w-full max-w-xl bg-[#1b120a]/95 backdrop-blur-md border-2 border-[#54341b] rounded-2xl p-3 shadow-2xl flex flex-col gap-2.5">
+      <div className="fixed bottom-0 left-0 right-0 z-20 flex justify-center px-2 pb-2 sm:pb-3 pointer-events-none">
+        <div data-testid="hud-bottom-panel" className="pointer-events-auto w-full max-w-xl bg-[#1b120a]/95 backdrop-blur-md border-2 border-[#54341b] rounded-2xl p-2.5 sm:p-3 shadow-2xl flex flex-col gap-2 sm:gap-2.5">
           {/* Top Row: Attack Sides (Side 1, Side 2, Side 3) */}
           <div className="flex items-center justify-between gap-1.5">
             {ATTACK_SIDES.map((s, idx) => {

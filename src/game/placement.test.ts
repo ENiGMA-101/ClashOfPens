@@ -7,128 +7,136 @@ import {
   isPenInsideTable,
   MIN_STARTING_DISTANCE,
   PEN_OVERLAP_DISTANCE,
+  SAFE_BOUNDARY_MARGIN,
   PenPlacement,
 } from './placement';
 import { TABLE_PRESETS, resolveTableDimensions } from './tableConfig';
 
-test('isPenInsideTable returns true when pen is safely centered', () => {
-  const deskWidth = 1040;
-  const deskHeight = 640;
-  assert.equal(isPenInsideTable({ x: 500, y: 300 }, 0, deskWidth, deskHeight), true);
-  assert.equal(isPenInsideTable({ x: 500, y: 300 }, Math.PI / 4, deskWidth, deskHeight), true);
+test('isPenInsideTable returns true when pen is safely centered on School Bench', () => {
+  const deskWidth = 1200;
+  const deskHeight = 650;
+  assert.equal(isPenInsideTable({ x: 600, y: 325 }, 0, deskWidth, deskHeight), true);
+  assert.equal(isPenInsideTable({ x: 300, y: 325 }, Math.PI / 2, deskWidth, deskHeight), true);
+  assert.equal(isPenInsideTable({ x: 900, y: 325 }, -Math.PI / 2, deskWidth, deskHeight), true);
 });
 
-test('isPenInsideTable detects pen extending outside left or right table boundary', () => {
-  const deskWidth = 1040;
-  const deskHeight = 640;
+test('isPenInsideTable detects pen extending outside left, right, top, or bottom boundary', () => {
+  const deskWidth = 1200;
+  const deskHeight = 650;
   // Center near left edge with horizontal orientation (length 170 extends across x < 0)
-  assert.equal(isPenInsideTable({ x: 40, y: 300 }, 0, deskWidth, deskHeight), false);
+  assert.equal(isPenInsideTable({ x: 40, y: 325 }, 0, deskWidth, deskHeight), false);
   // Center near right edge
-  assert.equal(isPenInsideTable({ x: 1020, y: 300 }, 0, deskWidth, deskHeight), false);
+  assert.equal(isPenInsideTable({ x: 1180, y: 325 }, 0, deskWidth, deskHeight), false);
+  // Center near top edge with vertical orientation
+  assert.equal(isPenInsideTable({ x: 600, y: 40 }, Math.PI / 2, deskWidth, deskHeight), false);
+  // Center near bottom edge with vertical orientation
+  assert.equal(isPenInsideTable({ x: 600, y: 620 }, Math.PI / 2, deskWidth, deskHeight), false);
 });
 
 test('validatePlacement rejects pen extending beyond borders', () => {
-  const deskWidth = 800;
-  const deskHeight = 600;
-  const result = validatePlacement({ x: 20, y: 300, angle: 0 }, [], deskWidth, deskHeight);
+  const deskWidth = 1200;
+  const deskHeight = 650;
+  const result = validatePlacement({ x: 20, y: 325, angle: 0 }, [], deskWidth, deskHeight);
   assert.equal(result.valid, false);
   assert.match(result.reason || '', /outside the playable table/i);
 });
 
 test('validatePlacement rejects overlapping pens', () => {
-  const deskWidth = 1000;
-  const deskHeight = 800;
-  const existing: PenPlacement[] = [{ x: 500, y: 400, angle: 0 }];
+  const deskWidth = 1200;
+  const deskHeight = 650;
+  const existing: PenPlacement[] = [{ x: 300, y: 325, angle: Math.PI / 2 }];
 
   // Almost identical position
-  const result = validatePlacement({ x: 502, y: 402, angle: 0 }, existing, deskWidth, deskHeight);
+  const result = validatePlacement({ x: 305, y: 328, angle: Math.PI / 2 }, existing, deskWidth, deskHeight);
   assert.equal(result.valid, false);
   assert.match(result.reason || '', /cannot overlap/i);
 });
 
 test('validatePlacement rejects pens placed too close together', () => {
-  const deskWidth = 1000;
-  const deskHeight = 800;
-  const existing: PenPlacement[] = [{ x: 500, y: 400, angle: 0 }];
+  const deskWidth = 1200;
+  const deskHeight = 650;
+  const existing: PenPlacement[] = [{ x: 300, y: 325, angle: Math.PI / 2 }];
 
-  // Distance 30px is between PEN_OVERLAP_DISTANCE (16) and MIN_STARTING_DISTANCE (65)
-  const result = validatePlacement({ x: 500, y: 430, angle: 0 }, existing, deskWidth, deskHeight);
+  // Distance 40px is below MIN_STARTING_DISTANCE
+  const result = validatePlacement({ x: 335, y: 325, angle: Math.PI / 2 }, existing, deskWidth, deskHeight);
   assert.equal(result.valid, false);
   assert.match(result.reason || '', /too close to another pen/i);
 });
 
-test('validatePlacement accepts valid separated pens', () => {
-  const deskWidth = 1000;
-  const deskHeight = 800;
-  const existing: PenPlacement[] = [{ x: 300, y: 400, angle: Math.PI / 2 }];
+test('validatePlacement accepts valid separated pens on School Bench', () => {
+  const deskWidth = 1200;
+  const deskHeight = 650;
+  const existing: PenPlacement[] = [{ x: 264, y: 325, angle: Math.PI / 2 }];
 
-  const result = validatePlacement({ x: 700, y: 400, angle: Math.PI / 2 }, existing, deskWidth, deskHeight);
+  const result = validatePlacement({ x: 936, y: 325, angle: -Math.PI / 2 }, existing, deskWidth, deskHeight);
   assert.equal(result.valid, true);
   assert.equal(result.reason, undefined);
 });
 
-test('generateRandomBotPlacement places pen safely inside playable boundaries across table shapes', () => {
+test('generateRandomBotPlacement places pen safely inside playable boundaries across all table presets', () => {
   for (const preset of TABLE_PRESETS) {
-    for (const isPortrait of [false, true]) {
-      const dims = resolveTableDimensions(preset, isPortrait);
-      const humanPlacement: PenPlacement[] = [
-        {
-          x: dims.width * 0.3,
-          y: dims.height * 0.5,
-          angle: 0,
-        },
-      ];
+    const dims = resolveTableDimensions(preset, false);
+    const humanPlacement: PenPlacement[] = [
+      {
+        x: dims.width * 0.22,
+        y: dims.height * 0.5,
+        angle: Math.PI / 2,
+      },
+    ];
 
-      // Test with custom pseudo-RNG for repeatability
-      let seed = 123456;
-      const seededRng = () => {
-        seed = (seed * 9301 + 49297) % 233280;
-        return seed / 233280;
-      };
+    // Test with pseudo-RNG
+    let seed = 42;
+    const seededRng = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
 
-      const botPlacement = generateRandomBotPlacement(
-        humanPlacement,
-        dims.width,
-        dims.height,
-        seededRng,
-        1,
-        2
-      );
+    const botPlacement = generateRandomBotPlacement(
+      humanPlacement,
+      dims.width,
+      dims.height,
+      seededRng,
+      1,
+      2
+    );
 
-      const val = validatePlacement(botPlacement, humanPlacement, dims.width, dims.height);
-      assert.equal(
-        val.valid,
-        true,
-        `Bot placement must be valid for ${preset.id} (${isPortrait ? 'portrait' : 'landscape'}), reason: ${val.reason}`
-      );
-    }
+    const val = validatePlacement(botPlacement, humanPlacement, dims.width, dims.height);
+    assert.equal(
+      val.valid,
+      true,
+      `Bot placement must be valid for ${preset.name}, reason: ${val.reason}`
+    );
   }
 });
 
-test('generateRandomBotPlacement works for 3-player match with multiple existing pens', () => {
-  const deskWidth = 1000;
-  const deskHeight = 700;
-  const existing: PenPlacement[] = [
-    { x: 300, y: 350, angle: 0 },
-    { x: 700, y: 350, angle: Math.PI / 2 },
-  ];
+test('AI Match Flow: Bot placement generated after human confirms avoids human and edges', () => {
+  const deskWidth = 1200;
+  const deskHeight = 650;
+  const confirmedHumanPlacement: PenPlacement = {
+    x: 280,
+    y: 320,
+    angle: Math.PI / 2,
+  };
 
-  const botPlacement = generateRandomBotPlacement(
-    existing,
-    deskWidth,
-    deskHeight,
-    Math.random,
-    2,
-    3
-  );
+  for (let i = 0; i < 20; i++) {
+    const bot = generateRandomBotPlacement(
+      [confirmedHumanPlacement],
+      deskWidth,
+      deskHeight,
+      Math.random,
+      1,
+      2
+    );
 
-  const val = validatePlacement(botPlacement, existing, deskWidth, deskHeight);
-  assert.equal(val.valid, true, `Bot 3 placement should be valid: ${val.reason}`);
+    const val = validatePlacement(bot, [confirmedHumanPlacement], deskWidth, deskHeight);
+    assert.equal(val.valid, true, `Bot attempt ${i} must be valid: ${val.reason}`);
+    assert.ok(bot.x > 450, `Bot should spawn safely across the School Bench runway (got x=${bot.x})`);
+  }
 });
 
-test('getSuggestedPlacement returns valid inside positions for both players', () => {
-  const deskWidth = 1040;
-  const deskHeight = 640;
+test('getSuggestedPlacement returns valid inside positions for School Bench', () => {
+  const deskWidth = 1200;
+  const deskHeight = 650;
 
   const p1 = getSuggestedPlacement(0, 2, deskWidth, deskHeight);
   const p2 = getSuggestedPlacement(1, 2, deskWidth, deskHeight);

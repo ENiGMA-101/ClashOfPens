@@ -3,9 +3,9 @@ import { ArenaDesk } from '../types/game';
 export const ARENAS_DATA: ArenaDesk[] = [
   {
     id: 'classic',
-    name: 'Classic Classroom',
-    banglaName: 'সাধারণ ক্লাসরুম',
-    desc: 'Traditional high school wooden desk with pencil scratches, chalk marks, and nostalgic tic-tac-toe games.',
+    name: 'School Bench',
+    banglaName: 'স্কুল বেঞ্চ',
+    desc: 'Traditional Bangladeshi classroom wooden school bench with natural grain, pencil marks, and authentic pen-fighting runway.',
     surface: 'normal',
     frictionAir: 0.05,
     theme: {
