@@ -8,6 +8,10 @@ export const SUB_DT = 1000 / 120;
 export const DESK_MARGIN = 34;
 export const MAX_SPEED = 28;
 
+// Turn duration and warning thresholds
+export const TURN_TIME_LIMIT_SEC = 10;
+export const TURN_WARNING_THRESHOLD_SEC = 6; // Clock ticking sound starts after 6 seconds (<= 4s remaining)
+
 export const DESK_FRICTION_MAP: Record<string, number> = {
   polished: 0.038,
   normal: 0.048,

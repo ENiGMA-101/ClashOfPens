@@ -26,7 +26,10 @@ import {
   PEN_LENGTH,
   PEN_WIDTH,
   SUB_DT,
+  TURN_TIME_LIMIT_SEC,
+  TURN_WARNING_THRESHOLD_SEC,
 } from './game/constants';
+import { computeTurnTimer, shouldTriggerTick } from './game/timer';
 import { getSkin } from './game/skins';
 import { getArena } from './game/arenas';
 import {
@@ -150,6 +153,19 @@ export default function App() {
   const [activeChallenge, setActiveChallenge] = useState<ChallengeItem | null>(null);
   const [activeTournamentMatch, setActiveTournamentMatch] = useState<TournamentMatch | null>(null);
   const [turnsUsedInChallenge, setTurnsUsedInChallenge] = useState(0);
+
+  // 10s Turn Timer State
+  const [turnTimeRemaining, setTurnTimeRemaining] = useState<number>(TURN_TIME_LIMIT_SEC);
+  const turnTimerRef = useRef<{
+    startTime: number;
+    lastTickCeil: number;
+    expired: boolean;
+  }>({
+    startTime: 0,
+    lastTickCeil: TURN_TIME_LIMIT_SEC,
+    expired: false,
+  });
+  const pausedAtRef = useRef<number | null>(null);
 
   const [matchWinner, setMatchWinner] = useState<InGamePlayer | null>(null);
   const [eliminatedHistory, setEliminatedHistory] = useState<InGamePlayer[]>([]);
@@ -468,6 +484,14 @@ export default function App() {
       setSide(player.lastSide);
       setPhase('aim');
 
+      // Reset 10s Turn Timer for the newly started turn
+      turnTimerRef.current = {
+        startTime: performance.now(),
+        lastTickCeil: TURN_TIME_LIMIT_SEC,
+        expired: false,
+      };
+      setTurnTimeRemaining(TURN_TIME_LIMIT_SEC);
+
       if (player.isBot) {
         showBanner(`${player.name}’s Turn`, 'Calculating angle and power...');
         if (player.botPersonality && Math.random() < 0.5) {
@@ -748,6 +772,72 @@ export default function App() {
 
     beginTurn(nextIdx);
   }, [beginTurn, currentTurn, finishMatch]);
+
+  // Handle 10-second turn timeout: play sound and shift turn to opponents
+  const handleTurnTimeout = useCallback(() => {
+    if (turnTimerRef.current.expired) return;
+    turnTimerRef.current.expired = true;
+
+    Sound.playTimeout();
+    const G = gameRef.current;
+    const timeoutPlayer = G.players[currentTurn];
+    const playerName = timeoutPlayer?.name || 'Player';
+
+    showBanner("Time's Up! Turn Skipped", `${playerName} ran out of 10s! Turn shifts to opponent.`);
+    G.isDragging = false;
+    endTurn();
+  }, [currentTurn, endTurn, showBanner]);
+
+  // 10s Turn Timer countdown and clock tick audio effect during 'aim' phase
+  useEffect(() => {
+    if (!isPlaying || phase !== 'aim') {
+      pausedAtRef.current = null;
+      return;
+    }
+
+    // Handle pause if modal is open
+    const isPaused = showExitConfirm || activeModal !== 'none';
+    if (isPaused) {
+      if (pausedAtRef.current === null) {
+        pausedAtRef.current = performance.now();
+      }
+      return;
+    } else if (pausedAtRef.current !== null) {
+      const pauseDuration = performance.now() - pausedAtRef.current;
+      turnTimerRef.current.startTime += pauseDuration;
+      pausedAtRef.current = null;
+    }
+
+    const interval = window.setInterval(() => {
+      if (phase !== 'aim' || !isPlaying) return;
+
+      const elapsed = (performance.now() - turnTimerRef.current.startTime) / 1000;
+      const timerState = computeTurnTimer(elapsed, TURN_TIME_LIMIT_SEC, TURN_WARNING_THRESHOLD_SEC);
+
+      setTurnTimeRemaining(timerState.remainingSeconds);
+
+      // After 6s elapsed (<= 4s remaining): sound clock tick on each second
+      const tickCheck = shouldTriggerTick(
+        timerState.remainingSeconds,
+        turnTimerRef.current.lastTickCeil,
+        TURN_TIME_LIMIT_SEC - TURN_WARNING_THRESHOLD_SEC
+      );
+
+      if (tickCheck.shouldTick) {
+        turnTimerRef.current.lastTickCeil = tickCheck.newTickSecond;
+        Sound.playClockTick(true);
+      }
+
+      // If player doesn't play turn within 10s, shift turn to opponent
+      if (timerState.isExpired && !turnTimerRef.current.expired) {
+        handleTurnTimeout();
+      }
+    }, 100);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [activeModal, handleTurnTimeout, isPlaying, phase, showExitConfirm]);
 
   // Setup Matter physics collision listener
   const setupCollisionHandler = useCallback(
@@ -1882,6 +1972,7 @@ export default function App() {
           side={side}
           bannerMessage={banner}
           series={series}
+          turnTimeRemaining={turnTimeRemaining}
           onSetPower={(p) => {
             setPower(p);
             gameRef.current.ghostDirty = true;

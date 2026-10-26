@@ -194,6 +194,62 @@ class SoundManager {
     osc.start(t);
     osc.stop(t + 0.04);
   }
+
+  public playClockTick(urgent = false): void {
+    this.init();
+    this.resumeCtx();
+    if (this.vibrateEnabled && navigator.vibrate) {
+      navigator.vibrate(urgent ? 20 : 10);
+    }
+    if (!this.isReady()) return;
+
+    const t = this.ctx!.currentTime;
+
+    // Crisp mechanical clock tick / wood pulse
+    const osc = this.ctx!.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(urgent ? 1250 : 920, t);
+    osc.frequency.exponentialRampToValueAtTime(urgent ? 420 : 310, t + 0.032);
+
+    const env = this.createEnvelope(t, urgent ? 0.25 : 0.16, 0.035);
+    osc.connect(env).connect(this.masterGain!);
+    osc.start(t);
+    osc.stop(t + 0.04);
+
+    // High acoustic click element
+    const noise = this.noiseBuffer(0.015);
+    if (noise) {
+      const filter = this.ctx!.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = urgent ? 2500 : 1900;
+      filter.Q.value = 3.2;
+      const noiseEnv = this.createEnvelope(t, 0.15, 0.018);
+      noise.connect(filter).connect(noiseEnv).connect(this.masterGain!);
+      noise.start(t);
+    }
+  }
+
+  public playTimeout(): void {
+    this.init();
+    this.resumeCtx();
+    if (this.vibrateEnabled && navigator.vibrate) {
+      navigator.vibrate([60, 40, 90]);
+    }
+    if (!this.isReady()) return;
+
+    const t = this.ctx!.currentTime;
+    // Distinct double buzzer tone
+    [0, 0.11].forEach((offset) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, t + offset);
+      osc.frequency.linearRampToValueAtTime(140, t + offset + 0.08);
+      const env = this.createEnvelope(t + offset, 0.22, 0.085);
+      osc.connect(env).connect(this.masterGain!);
+      osc.start(t + offset);
+      osc.stop(t + offset + 0.095);
+    });
+  }
 }
 
 export const Sound = new SoundManager();

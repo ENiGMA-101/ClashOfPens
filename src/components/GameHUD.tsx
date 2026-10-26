@@ -1,7 +1,7 @@
 import React from 'react';
-import { RotateCcw, Home, Sparkles, MessageCircle, Swords, Compass } from 'lucide-react';
+import { RotateCcw, Home, Sparkles, MessageCircle, Swords, Compass, Clock } from 'lucide-react';
 import { AttackSideIndex, GamePhase, InGamePlayer } from '../types/game';
-import { ATTACK_SIDES } from '../game/constants';
+import { ATTACK_SIDES, TURN_TIME_LIMIT_SEC } from '../game/constants';
 import { Sound } from '../game/audio';
 import { PowerMeter } from './PowerMeter';
 import { SeriesScoreboard } from './SeriesScoreboard';
@@ -21,6 +21,7 @@ interface GameHUDProps {
   onExit: () => void;
   isPractice?: boolean;
   series?: SeriesState | null;
+  turnTimeRemaining?: number;
 }
 
 export const GameHUD: React.FC<GameHUDProps> = ({
@@ -37,12 +38,18 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   onExit,
   isPractice,
   series,
+  turnTimeRemaining,
 }) => {
   const currentPlayer = players[currentTurnIndex];
   const isHumanTurn =
     phase === 'aim' && currentPlayer && !currentPlayer.isBot && currentPlayer.alive;
   const isMoving = phase === 'moving' || phase === 'launch';
   const currentSideInfo = ATTACK_SIDES[side];
+
+  // Turn Timer calculations
+  const timeRemaining = turnTimeRemaining !== undefined ? Math.max(0, turnTimeRemaining) : TURN_TIME_LIMIT_SEC;
+  const isTimeUrgent = phase === 'aim' && timeRemaining <= 4.0;
+  const timerPercent = Math.max(0, Math.min(100, (timeRemaining / TURN_TIME_LIMIT_SEC) * 100));
 
   // Check if any bot or player has an active speech bubble
   const speakingPlayer = players.find(
@@ -90,6 +97,26 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             </span>
           )}
         </div>
+
+        {/* Center/Top Turn Timer Badge */}
+        {phase === 'aim' && (
+          <div
+            data-testid="turn-timer-badge"
+            className={`pointer-events-auto flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold transition-all shadow-md mx-2 ${
+              isTimeUrgent
+                ? 'bg-red-950/95 border-2 border-red-500 text-red-200 animate-pulse shadow-lg shadow-red-500/40 scale-105'
+                : 'bg-[#1e130a]/90 border border-[#e5a93b]/50 text-amber-300'
+            }`}
+          >
+            <Clock className={`w-3.5 h-3.5 ${isTimeUrgent ? 'text-red-400' : 'text-amber-400'}`} />
+            <span className="font-extrabold text-xs sm:text-sm">{Math.ceil(timeRemaining)}s</span>
+            {isTimeUrgent && (
+              <span className="text-[10px] uppercase tracking-wider text-red-300 font-sans font-bold hidden xs:inline">
+                Warning!
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Top Control Buttons */}
         <div className="flex items-center gap-1.5 pointer-events-auto">
@@ -215,6 +242,51 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           </div>
         </div>
 
+        {/* Sidebar Middle: Turn Timer Card */}
+        <div
+          data-testid="sidebar-turn-timer"
+          className={`p-2.5 rounded-2xl border transition-all ${
+            isTimeUrgent
+              ? 'bg-red-950/40 border-red-500/80 shadow-md shadow-red-950/50'
+              : 'bg-[#150d06] border-[#38200f]'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5">
+              <Clock className={`w-3.5 h-3.5 ${isTimeUrgent ? 'text-red-400 animate-pulse' : 'text-amber-400'}`} />
+              <span className="text-xs font-bold text-amber-200">Turn Timer</span>
+            </div>
+            <span
+              className={`text-xs font-mono font-extrabold px-2 py-0.5 rounded-full ${
+                isTimeUrgent
+                  ? 'bg-red-900/80 text-red-100 border border-red-500 animate-pulse'
+                  : 'bg-[#29170c] text-amber-300 border border-amber-500/30'
+              }`}
+            >
+              {phase === 'aim' ? `${Math.ceil(timeRemaining)}s` : 'Waiting...'}
+            </span>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-full h-1.5 bg-black/60 rounded-full overflow-hidden border border-white/5">
+            <div
+              className={`h-full transition-all duration-100 rounded-full ${
+                isTimeUrgent
+                  ? 'bg-gradient-to-r from-red-600 to-rose-400'
+                  : 'bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300'
+              }`}
+              style={{ width: `${phase === 'aim' ? timerPercent : 100}%` }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] text-stone-400 mt-1">
+            <span>{isTimeUrgent ? 'Ticking clock warning!' : '10s max shot time'}</span>
+            <span className={isTimeUrgent ? 'text-red-400 font-bold' : 'text-stone-400'}>
+              {isTimeUrgent ? 'Shifts on 0s!' : 'Shifts on timeout'}
+            </span>
+          </div>
+        </div>
+
         {/* Sidebar Middle & Bottom: Vertical PowerMeter Console */}
         <div className="space-y-2">
           <PowerMeter
@@ -243,6 +315,31 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           data-testid="hud-bottom-panel"
           className="pointer-events-auto w-full max-w-xl bg-[#1b120a]/95 backdrop-blur-md border-2 border-[#54341b] rounded-2xl p-2.5 sm:p-3 shadow-2xl flex flex-col gap-2 sm:gap-2.5"
         >
+          {/* Mobile Turn Timer Bar */}
+          {phase === 'aim' && (
+            <div className="flex items-center justify-between px-2 py-1 bg-black/40 rounded-xl border border-white/10 text-[11px]">
+              <div className="flex items-center gap-1.5">
+                <Clock className={`w-3.5 h-3.5 ${isTimeUrgent ? 'text-red-400 animate-pulse' : 'text-amber-400'}`} />
+                <span className={`font-mono font-bold ${isTimeUrgent ? 'text-red-300 font-extrabold' : 'text-amber-300'}`}>
+                  Turn Time: {Math.ceil(timeRemaining)}s
+                </span>
+                {isTimeUrgent && (
+                  <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider animate-pulse">
+                    (Warning!)
+                  </span>
+                )}
+              </div>
+              <div className="w-28 sm:w-36 h-2 bg-black/60 rounded-full overflow-hidden border border-white/10">
+                <div
+                  className={`h-full transition-all duration-100 rounded-full ${
+                    isTimeUrgent ? 'bg-red-500' : 'bg-amber-400'
+                  }`}
+                  style={{ width: `${timerPercent}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Top Row: Attack Sides (Side 1, Side 2, Side 3) */}
           <div className="flex items-center justify-between gap-1.5">
             {ATTACK_SIDES.map((s, idx) => {
