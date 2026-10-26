@@ -13,6 +13,8 @@ export interface PlacementValidationResult {
   reason?: string;
 }
 
+export type ValidationResult = PlacementValidationResult;
+
 export const SAFE_BOUNDARY_MARGIN = 20;
 export const MIN_STARTING_DISTANCE = 70;
 export const PEN_OVERLAP_DISTANCE = 18;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { RotateCcw, Home, Sparkles, MessageCircle } from 'lucide-react';
+import { RotateCcw, Home, Sparkles, MessageCircle, Swords, Compass } from 'lucide-react';
 import { AttackSideIndex, GamePhase, InGamePlayer } from '../types/game';
 import { ATTACK_SIDES } from '../game/constants';
 import { Sound } from '../game/audio';
@@ -160,9 +160,89 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         </div>
       )}
 
-      {/* Bottom Interactive HUD Control Panel */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 flex justify-center px-2 pb-2 sm:pb-3 pointer-events-none">
-        <div data-testid="hud-bottom-panel" className="pointer-events-auto w-full max-w-xl bg-[#1b120a]/95 backdrop-blur-md border-2 border-[#54341b] rounded-2xl p-2.5 sm:p-3 shadow-2xl flex flex-col gap-2 sm:gap-2.5">
+      {/* ============================================================ */}
+      {/* DESKTOP LEFT SIDEBAR (Visible on lg >= 1024px screens) */}
+      {/* ============================================================ */}
+      <aside
+        className="hidden lg:flex fixed left-3 top-20 bottom-3 w-72 z-20 flex-col justify-between bg-[#1b120a]/95 backdrop-blur-md border-2 border-[#54341b] rounded-3xl p-3.5 shadow-2xl pointer-events-auto"
+        data-testid="desktop-control-sidebar"
+      >
+        {/* Sidebar Top: Attack Styles */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between pb-1.5 border-b border-[#3d2414]">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300 uppercase tracking-wider">
+              <Swords className="w-3.5 h-3.5" />
+              <span>Attack Style</span>
+            </div>
+            <span className="text-[11px] font-mono text-stone-400">
+              {isHumanTurn ? 'Your Turn' : 'Waiting...'}
+            </span>
+          </div>
+
+          {/* Vertical Stack of Attack Sides */}
+          <div className="space-y-1.5">
+            {ATTACK_SIDES.map((s, idx) => {
+              const isSelected = side === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  disabled={!isHumanTurn}
+                  onClick={() => {
+                    Sound.playClick();
+                    onSetSide(s.id);
+                  }}
+                  className={`w-full p-2.5 rounded-2xl border text-left transition-all ${
+                    isSelected
+                      ? 'bg-[#3b2514] border-[#f5c518] text-[#f5c518] shadow-md scale-[1.02]'
+                      : 'bg-[#150d06] border-[#38200f] text-stone-400 hover:text-stone-200 hover:border-stone-600'
+                  } ${!isHumanTurn ? 'opacity-60 cursor-not-allowed' : 'active:scale-98 cursor-pointer'}`}
+                >
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="font-kalam font-bold text-sm">
+                      {s.name}
+                    </span>
+                    <span className="text-[10px] font-mono text-amber-400/90 font-bold">
+                      {idx === 0 ? '1.00x Spin' : idx === 1 ? '0.95x Direct' : '1.10x Heavy'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-400 leading-tight">
+                    {s.desc}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Sidebar Middle & Bottom: Vertical PowerMeter Console */}
+        <div className="space-y-2">
+          <PowerMeter
+            power={power}
+            disabled={!isHumanTurn}
+            layout="vertical"
+            onSetPower={onSetPower}
+            onExecuteShot={(finalPower) => onFlick(finalPower)}
+          />
+
+          <div className="flex items-center justify-between text-[10px] text-stone-400 px-1">
+            <span className="flex items-center gap-1">
+              <Compass className="w-3 h-3 text-amber-400" />
+              <span>Drag desk to aim</span>
+            </span>
+            <span className="text-amber-300/80">{currentSideInfo.name}</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* ============================================================ */}
+      {/* MOBILE / TABLET BOTTOM PANEL (Visible on screens < 1024px) */}
+      {/* ============================================================ */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 flex justify-center px-2 pb-2 sm:pb-3 pointer-events-none">
+        <div
+          data-testid="hud-bottom-panel"
+          className="pointer-events-auto w-full max-w-xl bg-[#1b120a]/95 backdrop-blur-md border-2 border-[#54341b] rounded-2xl p-2.5 sm:p-3 shadow-2xl flex flex-col gap-2 sm:gap-2.5"
+        >
           {/* Top Row: Attack Sides (Side 1, Side 2, Side 3) */}
           <div className="flex items-center justify-between gap-1.5">
             {ATTACK_SIDES.map((s, idx) => {
@@ -221,6 +301,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           <PowerMeter
             power={power}
             disabled={!isHumanTurn}
+            layout="horizontal"
             onSetPower={onSetPower}
             onExecuteShot={(finalPower) => {
               onFlick(finalPower);

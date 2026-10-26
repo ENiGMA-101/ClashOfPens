@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, VolumeX, Settings, Award, Smartphone } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Award, Smartphone, Cloud } from 'lucide-react';
 import { PlayerProgress, GameSettings } from '../types/game';
 import { calculateLevel, xpForNextLevel } from '../game/storage';
 
@@ -10,6 +10,7 @@ interface HeaderNavProps {
   onOpenSettings: () => void;
   onOpenAndroidGuide: () => void;
   onOpenLocker: () => void;
+  onOpenAccount?: () => void;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -19,6 +20,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenSettings,
   onOpenAndroidGuide,
   onOpenLocker,
+  onOpenAccount,
 }) => {
   const level = calculateLevel(progress.xp);
   const nextLvlXp = xpForNextLevel(level);
@@ -67,6 +69,19 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
 
       {/* Right Controls */}
       <div className="flex items-center gap-1.5">
+        {/* Neon Cloud & Account */}
+        {onOpenAccount && (
+          <button
+            onClick={onOpenAccount}
+            aria-label="Cloud Save & Account"
+            title="Neon Cloud Save & Google Sign-In"
+            className="flex items-center gap-1 px-2.5 py-1 bg-[#1e2a38] hover:bg-[#28384b] text-[#60a5fa] text-xs font-bold rounded-lg border border-[#3b82f6]/40 transition active:scale-95"
+          >
+            <Cloud className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Cloud Save</span>
+          </button>
+        )}
+
         {/* Android Play Store Package Guide */}
         <button
           onClick={onOpenAndroidGuide}

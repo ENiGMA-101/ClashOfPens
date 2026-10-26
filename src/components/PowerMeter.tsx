@@ -7,6 +7,7 @@ interface PowerMeterProps {
   disabled?: boolean;
   onSetPower: (val: number) => void;
   onExecuteShot: (power: number) => void;
+  layout?: 'horizontal' | 'vertical';
 }
 
 export const PowerMeter: React.FC<PowerMeterProps> = ({
@@ -14,6 +15,7 @@ export const PowerMeter: React.FC<PowerMeterProps> = ({
   disabled = false,
   onSetPower,
   onExecuteShot,
+  layout = 'horizontal',
 }) => {
   const [isCharging, setIsCharging] = useState(false);
   const chargeRef = useRef<number>(power);
@@ -100,6 +102,100 @@ export const PowerMeter: React.FC<PowerMeterProps> = ({
     if (power < 75) return 'from-yellow-500 to-amber-400';
     return 'from-orange-500 to-red-500';
   };
+
+  if (layout === 'vertical') {
+    return (
+      <div className="flex flex-col gap-3 bg-[#150d06] p-3 rounded-2xl border border-[#3d2414] shadow-inner select-none w-full">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+            <Zap className="w-4 h-4 text-[#f5c518]" />
+            <span>Shot Power</span>
+          </span>
+          <span
+            className={`font-kalam font-extrabold text-2xl ${
+              isMax ? 'text-red-400 animate-pulse' : 'text-[#f5c518]'
+            }`}
+          >
+            {power}%
+          </span>
+        </div>
+
+        {/* Vertical cue bar and charge area */}
+        <div className="flex items-center gap-3">
+          <div
+            className={`relative w-8 h-24 bg-[#0a0604] rounded-xl p-1 border flex flex-col justify-end cursor-pointer touch-none transition-all shrink-0 ${
+              isCharging
+                ? 'border-[#f5c518] shadow-lg shadow-[#d4af37]/30 scale-[1.03]'
+                : 'border-[#452815] hover:border-[#633a1e]'
+            } ${disabled ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'}`}
+            onPointerDown={startCharging}
+            onPointerUp={endCharging}
+            onPointerCancel={cancelCharging}
+            role="slider"
+            aria-label="Hold to charge shot power"
+            aria-valuenow={power}
+            aria-valuemin={5}
+            aria-valuemax={100}
+          >
+            <div className="relative w-full h-full bg-[#1b110a] rounded-lg overflow-hidden flex flex-col justify-end">
+              <div
+                className={`w-full rounded-b-lg bg-gradient-to-t ${getGradient()} transition-all duration-75 relative ${
+                  isMax ? 'animate-pulse' : ''
+                }`}
+                style={{ height: `${power}%` }}
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-white shadow-[0_0_8px_#ffffff]" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col justify-between h-24 py-1">
+            <p className="text-[11px] text-gray-400 leading-snug">
+              {isCharging
+                ? isMax
+                  ? '⚡ 100% LOCKED! Release to strike!'
+                  : '⚡ Charging… release anytime to flick!'
+                : 'Drag slider or hold button to charge power'}
+            </p>
+
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-gray-500 font-mono">
+                <span>5% Min</span>
+                <span>100% Max</span>
+              </div>
+              <input
+                type="range"
+                min="5"
+                max="100"
+                value={power}
+                disabled={disabled}
+                onChange={(e) => onSetPower(+e.target.value)}
+                className="w-full accent-[#d4af37] h-2 bg-[#2a170c] rounded-lg cursor-pointer disabled:opacity-40"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Big Flick Button */}
+        <button
+          disabled={disabled}
+          onPointerDown={startCharging}
+          onPointerUp={endCharging}
+          onPointerCancel={cancelCharging}
+          className={`w-full py-3 px-4 rounded-xl font-kalam font-black text-lg flex items-center justify-center gap-2 shadow-lg transition-all select-none touch-none ${
+            disabled
+              ? 'bg-[#24150d] text-gray-500 border border-[#3d2414] cursor-not-allowed'
+              : isCharging
+              ? 'bg-gradient-to-r from-[#e11d48] to-[#f59e0b] text-white scale-[1.02] shadow-[#f59e0b]/40 ring-2 ring-[#f5c518]'
+              : 'bg-gradient-to-r from-[#d4af37] via-[#f5d061] to-[#d4af37] text-black hover:brightness-110 active:scale-95 shadow-[#d4af37]/30'
+          }`}
+        >
+          <Sparkles className="w-5 h-5 fill-current" />
+          <span>{isCharging ? 'RELEASE TO FLICK!' : 'HOLD TO FLICK'}</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-3 bg-[#150d06] p-2.5 rounded-2xl border border-[#3d2414] shadow-inner select-none">

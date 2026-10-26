@@ -82,6 +82,9 @@ import { SettingsModal } from './components/SettingsModal';
 import { HowToModal } from './components/HowToModal';
 import { MatchOverModal } from './components/MatchOverModal';
 import { AndroidReleaseModal } from './components/AndroidReleaseModal';
+import { ExitConfirmModal } from './components/ExitConfirmModal';
+import { AccountModal } from './components/AccountModal';
+import { recordCloudMatch } from './game/cloudSync';
 import {
   PenPlacement,
   PlacementValidationResult,
@@ -103,7 +106,8 @@ type ActiveModal =
   | 'settings'
   | 'howto'
   | 'match_over'
-  | 'android_release';
+  | 'android_release'
+  | 'account';
 
 interface FallenPen {
   player: InGamePlayer;
@@ -181,6 +185,7 @@ export default function App() {
   const [confirmedPlacements, setConfirmedPlacements] = useState<Record<number, PenPlacement>>({});
   const [botPlacements, setBotPlacements] = useState<Record<number, PenPlacement>>({});
   const [draftPlacement, setDraftPlacement] = useState<PenPlacement>({ x: 0, y: 0, angle: 0 });
+  const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
 
   const placingDragRef = useRef<{ isDragging: boolean; offsetX: number; offsetY: number }>({
     isDragging: false,
@@ -345,6 +350,10 @@ export default function App() {
     G.deskWidth = dims.width;
     G.deskHeight = dims.height;
 
+    // On desktop (w >= 1024), HUD controls move to a compact left sidebar
+    const isDesktopSidebar = w >= 1024 && isPlaying && phase !== 'placing' && phase !== 'handover';
+    const sidebarWidth = isDesktopSidebar ? 300 : 0;
+
     // Dynamically measure actual HUD heights from DOM if rendered, with responsive fallbacks
     let topPad = 0;
     let botPad = 0;
@@ -359,7 +368,9 @@ export default function App() {
         topPad = w < 640 ? 100 : 75;
       }
 
-      if (botEl) {
+      if (isDesktopSidebar) {
+        botPad = 24; // Sidebar handles controls on desktop, freeing vertical room
+      } else if (botEl) {
         botPad = botEl.getBoundingClientRect().height;
       } else {
         const isPlacing = phase === 'placing' || phase === 'handover';
@@ -375,13 +386,13 @@ export default function App() {
     const horizontalMargin = Math.max(16, Math.min(36, w * 0.03));
     const verticalMargin = 16;
 
-    const availW = Math.max(80, w - 2 * horizontalMargin);
+    const availW = Math.max(80, w - sidebarWidth - 2 * horizontalMargin);
     const availH = Math.max(80, h - topPad - botPad - 2 * verticalMargin);
 
     const scale = Math.min(availW / G.deskWidth, availH / G.deskHeight);
     G.view = {
       scale,
-      ox: (w - G.deskWidth * scale) / 2,
+      ox: sidebarWidth + (w - sidebarWidth - G.deskWidth * scale) / 2,
       oy: topPad + verticalMargin + (availH - G.deskHeight * scale) / 2,
     };
   }, [isPlaying, phase, selectedTableId, customDims]);
@@ -666,12 +677,45 @@ export default function App() {
         knockoutsCount: prev.knockoutsCount + (winner?.knockouts || 0),
       }));
 
+      // Asynchronously record completed match to Neon cloud
+      const human = G.players.find((p) => !p.isBot);
+      const opponent = G.players.find((p) => p !== human);
+      if (human) {
+        recordCloudMatch({
+          matchMode: gameMode,
+          result: winner === human ? 'win' : winner === null ? 'draw' : 'loss',
+          opponentType: opponent?.isBot ? 'bot' : 'human',
+          opponentName: opponent?.name || 'Opponent',
+          shotsTaken: human.flickCount,
+          knockouts: human.knockouts,
+        }).catch(() => {});
+      }
+
       setTimeout(() => {
         setActiveModal('match_over');
       }, 1400);
     },
-    [activeChallenge, activeTournamentMatch, series, turnsUsedInChallenge]
+    [activeChallenge, activeTournamentMatch, gameMode, series, turnsUsedInChallenge]
   );
+
+  const handleStayInMatch = useCallback(() => {
+    setShowExitConfirm(false);
+  }, []);
+
+  const handleLeaveMatch = useCallback(() => {
+    const G = gameRef.current;
+    if (G.engine) {
+      Composite.clear(G.engine.world, false);
+    }
+    G.players = [];
+    G.attacker = null;
+    G.fallen = [];
+    G.fx = [];
+    setShowExitConfirm(false);
+    setIsPlaying(false);
+    setPhase('aim');
+    setBanner(null);
+  }, []);
 
   // Complete turn and advance
   const endTurn = useCallback(() => {
@@ -1763,6 +1807,7 @@ export default function App() {
         onOpenSettings={() => openModal('settings')}
         onOpenAndroidGuide={() => openModal('android_release')}
         onOpenLocker={() => openModal('locker')}
+        onOpenAccount={() => openModal('account')}
       />
 
       {/* Main Interactive Canvas */}
@@ -1823,7 +1868,7 @@ export default function App() {
             setIsHandover(false);
             setPhase('placing');
           }}
-          onExit={() => setIsPlaying(false)}
+          onExit={() => setShowExitConfirm(true)}
         />
       )}
 
@@ -1859,7 +1904,13 @@ export default function App() {
             }));
             startMatch(configs, gameMode, series ? 'bo5' : 'single', true);
           }}
-          onExit={() => setIsPlaying(false)}
+          onExit={() => {
+            if (phase === 'over') {
+              setIsPlaying(false);
+            } else {
+              setShowExitConfirm(true);
+            }
+          }}
           isPractice={gameMode === 'practice'}
         />
       )}
@@ -1988,6 +2039,22 @@ export default function App() {
       {/* Android Play Store Release Guide */}
       {activeModal === 'android_release' && (
         <AndroidReleaseModal onClose={() => setActiveModal('none')} />
+      )}
+
+      {/* Exit Match Confirmation Modal */}
+      <ExitConfirmModal
+        isOpen={showExitConfirm}
+        onStay={handleStayInMatch}
+        onLeave={handleLeaveMatch}
+      />
+
+      {/* Account & Neon Cloud Save Modal */}
+      {activeModal === 'account' && (
+        <AccountModal
+          progress={progress}
+          onClose={() => setActiveModal('none')}
+          onApplyCloudSave={(newProgress) => setProgress(newProgress)}
+        />
       )}
     </main>
   );

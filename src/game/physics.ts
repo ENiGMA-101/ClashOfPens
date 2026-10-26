@@ -4,6 +4,7 @@ import {
   ATTACK_SIDES,
   BASE_DENSITY,
   BASE_RESTITUTION,
+  MAX_SPEED,
   PEN_LENGTH,
   PEN_WIDTH,
   SUB_DT,
@@ -21,9 +22,16 @@ export function angDiff(a: number, b: number): number {
   return d;
 }
 
+export const MIN_LAUNCH_SPEED = 3.2;
+export const BASE_MAX_LAUNCH_SPEED = 24.0;
+
 export function launchSpeed(powerNormalized: number, sideIndex: AttackSideIndex): number {
   const side = ATTACK_SIDES[sideIndex] || ATTACK_SIDES[1];
-  return (2 + 30 * powerNormalized) * side.mult;
+  const p = clamp(powerNormalized, 0, 1);
+  // Smooth progressive power curve: low power allows fine nudges, high power gives strong attacks without instant table clears
+  const curved = Math.pow(p, 1.25);
+  const rawSpeed = MIN_LAUNCH_SPEED + (BASE_MAX_LAUNCH_SPEED - MIN_LAUNCH_SPEED) * curved;
+  return Math.min(MAX_SPEED, rawSpeed * side.mult);
 }
 
 export function contactPoint(
@@ -60,9 +68,10 @@ export function applyLaunch(
   const ry = ay * side.offset * PEN_LENGTH;
   const J = body.mass * v;
 
-  // Angular torque from strike offset
-  const angularVel = (rx * uy * J - ry * ux * J) / body.inertia;
-  Body.setAngularVelocity(body, angularVel);
+  // Angular torque from strike offset, scaled smoothly to avoid unnatural chaotic spinning
+  const spinFactor = side.id === 0 ? 0.75 : side.id === 2 ? 0.65 : 0;
+  const angularVel = ((rx * uy * J - ry * ux * J) * spinFactor) / body.inertia;
+  Body.setAngularVelocity(body, clamp(angularVel, -0.42, 0.42));
 }
 
 export function segOf(
@@ -121,17 +130,25 @@ export function isOffDesk(
   body: Matter.Body,
   deskWidth: number,
   deskHeight: number,
-  rule: FallRule
+  rule: FallRule = 'strict'
 ): boolean {
-  if (rule === 'center') {
-    const p = body.position;
-    return p.x < 0 || p.y < 0 || p.x > deskWidth || p.y > deskHeight;
+  const p = body.position;
+  // Center of mass has crossed table edge: definitive knockout
+  if (p.x < 0 || p.y < 0 || p.x > deskWidth || p.y > deskHeight) {
+    return true;
   }
-  for (const v of body.vertices) {
-    if (v.x < 0 || v.y < 0 || v.x > deskWidth || v.y > deskHeight) {
-      return true;
+
+  // Under 'strict' rule: eliminate if 2 or more vertices (half or more of the body footprint) have crossed the edge
+  if (rule === 'strict') {
+    let offCount = 0;
+    for (const v of body.vertices) {
+      if (v.x < 0 || v.y < 0 || v.x > deskWidth || v.y > deskHeight) {
+        offCount++;
+        if (offCount >= 2) return true;
+      }
     }
   }
+
   return false;
 }
 
@@ -191,18 +208,21 @@ export function resolveCustomStrike(
   const ran = ra.x * ny - ra.y * nx;
   const rbn = rb.x * ny - rb.y * nx;
 
-  const impulse =
+  const rawImpulse =
     (-(1 + restitution) * vn) /
     (1 / bodyA.mass +
       1 / bodyB.mass +
       (ran * ran) / bodyA.inertia +
       (rbn * rbn) / bodyB.inertia);
 
+  const maxImpulse = (bodyA.mass + bodyB.mass) * MAX_SPEED * 1.2;
+  const impulse = Math.min(maxImpulse, Math.max(0, rawImpulse));
+
   Body.setVelocity(bodyA, {
     x: va.x - (impulse * nx) / bodyA.mass,
     y: va.y - (impulse * ny) / bodyA.mass,
   });
-  Body.setAngularVelocity(bodyA, wa - (ran * impulse) / bodyA.inertia);
+  Body.setAngularVelocity(bodyA, clamp(wa - (ran * impulse) / bodyA.inertia, -0.6, 0.6));
 
   Body.setVelocity(bodyB, {
     x: vb.x + (impulse * nx) / bodyB.mass,
