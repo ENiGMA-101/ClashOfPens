@@ -18,3 +18,18 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Desktop & Mobile Release Artifacts
+release-builds/
+dist-electron/
+*.apk
+*.aab
+*.keystore
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+android/.gradle/
+android/app/build/
+android/build/
+
+

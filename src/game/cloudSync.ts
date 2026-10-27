@@ -18,11 +18,36 @@ export interface UserSession {
 }
 
 /**
+ * Resolves the backend API URL across environments (Web, Capacitor Android, Electron).
+ */
+export function getApiBaseUrl(): string {
+  const envUrl = (import.meta as any).env?.VITE_API_BASE_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, '');
+  }
+
+  if (typeof window !== 'undefined' && window.location) {
+    const origin = window.location.origin;
+    // Standard browser web deployment or local dev server
+    if (origin.startsWith('http://') || origin.startsWith('https://')) {
+      // Capacitor android webview serves on https://localhost or capacitor://localhost
+      if (origin === 'https://localhost' || origin === 'capacitor://localhost') {
+        return 'https://clash-of-pens.vercel.app';
+      }
+      return ''; // Same-origin relative path
+    }
+  }
+
+  // Packaged Electron app using file:// protocol
+  return 'https://clash-of-pens.vercel.app';
+}
+
+/**
  * Checks current authentication session.
  */
 export async function checkSession(): Promise<UserSession> {
   try {
-    const res = await fetch('/api/me', { credentials: 'include' });
+    const res = await fetch(`${getApiBaseUrl()}/api/me`, { credentials: 'include' });
     if (!res.ok) {
       return { authenticated: false, isDbConnected: false };
     }
@@ -40,7 +65,7 @@ export async function authenticateWithGoogle(
   profile?: { sub: string; name: string; picture?: string }
 ): Promise<{ success: boolean; user?: any; save?: any; error?: string }> {
   try {
-    const res = await fetch('/api/auth/google', {
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/google`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -62,7 +87,7 @@ export async function authenticateWithGoogle(
  */
 export async function logoutSession(): Promise<boolean> {
   try {
-    const res = await fetch('/api/auth/logout', {
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     });
@@ -94,7 +119,7 @@ export async function syncProgressToCloud(
       revision,
     };
 
-    const res = await fetch('/api/save', {
+    const res = await fetch(`${getApiBaseUrl()}/api/save`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -112,7 +137,7 @@ export async function syncProgressToCloud(
 
     return { success: true, cloudSave: data.save };
   } catch (err: any) {
-    return { success: false, error: err.message };
+    return { success: false, error: err.message || 'Network offline' };
   }
 }
 
@@ -129,7 +154,7 @@ export async function recordCloudMatch(matchData: {
   durationSeconds?: number;
 }): Promise<boolean> {
   try {
-    const res = await fetch('/api/matches', {
+    const res = await fetch(`${getApiBaseUrl()}/api/matches`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -146,7 +171,7 @@ export async function recordCloudMatch(matchData: {
  */
 export async function deleteCloudAccount(): Promise<boolean> {
   try {
-    const res = await fetch('/api/account', {
+    const res = await fetch(`${getApiBaseUrl()}/api/account`, {
       method: 'DELETE',
       credentials: 'include',
     });

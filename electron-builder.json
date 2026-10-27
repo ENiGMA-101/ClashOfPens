@@ -1,0 +1,54 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.clashofpens.app",
+  "productName": "ClashOfPens",
+  "copyright": "Copyright © 2026 ClashOfPens",
+  "directories": {
+    "output": "release-builds"
+  },
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64", "ia32"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "artifactName": "${productName}-Windows-${arch}-${target}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "allowElevation": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "ClashOfPens",
+    "artifactName": "${productName}-Windows-${arch}-Setup.${ext}"
+  },
+  "portable": {
+    "artifactName": "${productName}-Windows-${arch}-Portable.${ext}"
+  },
+  "linux": {
+    "target": ["AppImage", "deb"],
+    "category": "Game",
+    "synopsis": "Physics-Based Pen Fighting Game",
+    "description": "ClashOfPens is a fast-paced physics pen fighting action game with multiple tables, custom skins, smart AI, and local/cloud multiplayer.",
+    "artifactName": "${productName}-Linux-${arch}.${ext}"
+  },
+  "deb": {
+    "priority": "optional",
+    "packageCategory": "games",
+    "artifactName": "${productName}-Linux-${arch}.deb"
+  },
+  "appImage": {
+    "artifactName": "${productName}-Linux-${arch}.AppImage"
+  }
+}

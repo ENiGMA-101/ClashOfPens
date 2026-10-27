@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.penfight.deskbrawl',
-  appName: 'Pen Fight: Desk Brawl',
+  appName: 'ClashOfPens',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

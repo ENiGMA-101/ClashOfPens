@@ -1,5 +1,5 @@
 import React from 'react';
-import { Volume2, VolumeX, Settings, Award, Smartphone, Cloud } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Award, Cloud } from 'lucide-react';
 import { PlayerProgress, GameSettings } from '../types/game';
 import { calculateLevel, xpForNextLevel } from '../game/storage';
 
@@ -8,7 +8,6 @@ interface HeaderNavProps {
   settings: GameSettings;
   onUpdateSettings: (newSettings: GameSettings) => void;
   onOpenSettings: () => void;
-  onOpenAndroidGuide: () => void;
   onOpenLocker: () => void;
   onOpenAccount?: () => void;
 }
@@ -18,7 +17,6 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   settings,
   onUpdateSettings,
   onOpenSettings,
-  onOpenAndroidGuide,
   onOpenLocker,
   onOpenAccount,
 }) => {
@@ -81,17 +79,6 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             <span className="hidden sm:inline">Cloud Save</span>
           </button>
         )}
-
-        {/* Android Play Store Package Guide */}
-        <button
-          onClick={onOpenAndroidGuide}
-          aria-label="Google Play & Android Release Guide"
-          title="Google Play Release Guide"
-          className="flex items-center gap-1 px-2.5 py-1 bg-[#10422a] hover:bg-[#165a39] text-[#a3e635] text-xs font-bold rounded-lg border border-[#22c55e]/40 transition active:scale-95"
-        >
-          <Smartphone className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Play Release</span>
-        </button>
 
         {/* Sound toggle */}
         <button

@@ -84,7 +84,6 @@ import { ChampionshipModal } from './components/ChampionshipModal';
 import { SettingsModal } from './components/SettingsModal';
 import { HowToModal } from './components/HowToModal';
 import { MatchOverModal } from './components/MatchOverModal';
-import { AndroidReleaseModal } from './components/AndroidReleaseModal';
 import { ExitConfirmModal } from './components/ExitConfirmModal';
 import { AccountModal } from './components/AccountModal';
 import { recordCloudMatch } from './game/cloudSync';
@@ -109,7 +108,6 @@ type ActiveModal =
   | 'settings'
   | 'howto'
   | 'match_over'
-  | 'android_release'
   | 'account';
 
 interface FallenPen {
@@ -1895,7 +1893,6 @@ export default function App() {
         settings={settings}
         onUpdateSettings={setSettings}
         onOpenSettings={() => openModal('settings')}
-        onOpenAndroidGuide={() => openModal('android_release')}
         onOpenLocker={() => openModal('locker')}
         onOpenAccount={() => openModal('account')}
       />
@@ -2125,11 +2122,6 @@ export default function App() {
             setIsPlaying(false);
           }}
         />
-      )}
-
-      {/* Android Play Store Release Guide */}
-      {activeModal === 'android_release' && (
-        <AndroidReleaseModal onClose={() => setActiveModal('none')} />
       )}
 
       {/* Exit Match Confirmation Modal */}
